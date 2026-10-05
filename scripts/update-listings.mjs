@@ -7,10 +7,14 @@ const MAX_PRICE=185000;
 const MIN_BEDROOMS=3;
 
 const SOURCES=[
-  {provider:"Fotocasa",province:"Barcelona",url:"https://www.fotocasa.es/es/comprar/viviendas/barcelona-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3"},
-  {provider:"Fotocasa",province:"Tarragona",url:"https://www.fotocasa.es/es/comprar/viviendas/tarragona-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3"},
-  {provider:"Fotocasa",province:"Girona",url:"https://www.fotocasa.es/es/comprar/viviendas/girona-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3"},
-  {provider:"Fotocasa",province:"Lleida",url:"https://www.fotocasa.es/es/comprar/viviendas/lleida-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3"},
+  {provider:"Fotocasa",province:"Barcelona",url:"https://www.fotocasa.es/es/comprar/viviendas/barcelona-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3"},
+  {provider:"Fotocasa",province:"Tarragona",url:"https://www.fotocasa.es/es/comprar/viviendas/tarragona-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3"},
+  {provider:"Fotocasa",province:"Girona",url:"https://www.fotocasa.es/es/comprar/viviendas/girona-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3"},
+  {provider:"Fotocasa",province:"Lleida",url:"https://www.fotocasa.es/es/comprar/viviendas/lleida-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3"},
+  {provider:"Habitaclia",province:"Barcelona",url:"https://www.habitaclia.com/comprar/casas/barcelona-provincia/s"},
+  {provider:"Habitaclia",province:"Tarragona",url:"https://www.habitaclia.com/comprar/casas/tarragona-provincia/s"},
+  {provider:"Habitaclia",province:"Girona",url:"https://www.habitaclia.com/comprar/casas/girona-provincia/s"},
+  {provider:"Habitaclia",province:"Lleida",url:"https://www.habitaclia.com/comprar/casas/lleida-provincia/s"},
   {provider:"Yaencontre",province:"Barcelona",url:"https://www.yaencontre.com/venta/viviendas/barcelona-provincia"},
   {provider:"Yaencontre",province:"Tarragona",url:"https://www.yaencontre.com/venta/viviendas/tarragona-provincia"},
   {provider:"Pisos.com",province:"Barcelona",url:"https://www.pisos.com/venta/casas-barcelona/"},
@@ -70,6 +74,7 @@ function abs(base,href){
 }
 function isDetail(provider,url){
   if(provider==="Fotocasa") return /\/es\/comprar\/vivienda\//i.test(url);
+  if(provider==="Habitaclia") return /\/comprar\/(?:vivienda|casa|chalet)\//i.test(url);
   if(provider==="Yaencontre") return /\/venta\/(?:casa|piso|chalet|vivienda)\//i.test(url);
   if(provider==="Pisos.com") return /\/comprar\//i.test(url);
   return false;
@@ -150,6 +155,29 @@ function extractProvince(items,fallback){
   }
   return fallback;
 }
+function extractGeo(items){
+  for(const x of items){
+    const g=x.geo||x.location?.geo;
+    const lat=Number(g?.latitude),lon=Number(g?.longitude);
+    if(Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=40&&lat<=43.5&&lon>=0&&lon<=3.5)return {lat,lon};
+  }
+  return null;
+}
+async function routeMinutes(geo){
+  if(!geo)return null;
+  const origin={lat:41.4247,lon:2.1647};
+  const url=`https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${geo.lon},${geo.lat}?overview=false`;
+  try{
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),9000);
+    const r=await fetch(url,{headers:{"user-agent":UA},signal:ctrl.signal});
+    clearTimeout(t);
+    if(!r.ok)return null;
+    const j=await r.json();
+    const sec=j?.routes?.[0]?.duration;
+    return Number.isFinite(sec)?sec/60:null;
+  }catch{return null}
+}
 function occupancy(text){
   return POSITIVE.free.test(text)?"confirmed_free":"no_signals";
 }
@@ -205,6 +233,7 @@ function parseDetail(provider,province,url,html){
   const independent=POSITIVE.independent.test(text);
   const conditionOk=POSITIVE.condition.test(text);
   const fiber=POSITIVE.fiber.test(text);
+  const geo=extractGeo(items);
 
   const listing={
     id:idFor(provider,url,title,place),
@@ -215,6 +244,8 @@ function parseDetail(provider,province,url,html){
     conditionStatus:conditionOk?"confirmed":"pending",
     fiberStatus:fiber?"confirmed":"pending",
     travelStatus:"pending",
+    driveMinutes:null,
+    geo,
     score:0
   };
   listing.score=scoreOf(listing,text);
@@ -252,6 +283,15 @@ async function main(){
           const detail=await fetchHtml(url);
           const parsed=parseDetail(src.provider,src.province,url,detail);
           if(parsed.listing){
+            if(parsed.listing.geo){
+              const mins=await routeMinutes(parsed.listing.geo);
+              if(mins!=null){
+                if(mins>90) { await wait(250); continue; }
+                parsed.listing.driveMinutes=Math.round(mins);
+                parsed.listing.travelStatus="confirmed";
+                parsed.listing.score=Math.min(100,parsed.listing.score+5);
+              }
+            }
             const old=byUrl.get(url);
             found.set(url,mergeListing(old,parsed.listing,now));
           }
@@ -267,13 +307,44 @@ async function main(){
     await wait(700);
   }
 
-  const next=[];
-  for(const x of prior.listings||[]){
-    if(found.has(x.url)){next.push(found.get(x.url));found.delete(x.url);continue}
-    const missed=(x.missedRuns||0)+1;
-    next.push({...x,missedRuns:missed,active:missed<3});
+  // Revalidar directamente las candidatas existentes para que un portal bloqueado
+  // o una búsqueda que no las muestre no las marque como retiradas por error.
+  for(const old of prior.listings||[]){
+    if(found.has(old.url))continue;
+    try{
+      const html=await fetchHtml(old.url);
+      const $=cheerio.load(html);
+      const text=clean($("body").text());
+      const unavailable=/anuncio\s+(?:ya\s+)?no\s+disponible|inmueble\s+(?:ya\s+)?no\s+disponible|anuncio\s+retirado|inmueble\s+retirado|\breservad[ao]\b/i.test(text);
+      const reject=hardReject(text);
+      if(unavailable||reject){
+        found.set(old.url,{...old,active:false,lastChecked:now,removalReason:unavailable?"no disponible":reject});
+      }else{
+        const parsed=parseDetail(old.provider,old.province,old.url,html);
+        if(parsed.listing){
+          if(parsed.listing.geo){
+            const mins=await routeMinutes(parsed.listing.geo);
+            if(mins!=null){
+              if(mins>90){
+                found.set(old.url,{...old,active:false,lastChecked:now,removalReason:"más de 1h30"});
+                continue;
+              }
+              parsed.listing.driveMinutes=Math.round(mins);
+              parsed.listing.travelStatus="confirmed";
+            }
+          }
+          found.set(old.url,mergeListing(old,parsed.listing,now));
+        }else{
+          found.set(old.url,{...old,active:true,lastChecked:now,missedRuns:0});
+        }
+      }
+    }catch{
+      found.set(old.url,{...old,active:old.active!==false,lastCheckFailedAt:now});
+    }
+    await wait(250);
   }
-  next.push(...found.values());
+
+  const next=[...found.values()];
 
   const dedup=new Map();
   for(const x of next){
