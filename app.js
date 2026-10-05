@@ -20,6 +20,7 @@ const new48=h=>recent(h)&&hours(date(h))<=48;
 const stretch=h=>h.price>180000&&h.price<=185000;
 const HARD_EXCLUDE=/(ocupad[oa]|sin posesión|sin posesion|inquilin|alquilad[oa]|arrendad[oa]|nuda propiedad|proindiviso|pro-indiviso|subasta|cesión de crédito|cesion de credito|cesión de remate|cesion de remate|solo inversores|sólo inversores|no hipotecable|fondos propios|\\bVPO\\b|finca rústica|finca rustica|parcela rústica|parcela rustica|suelo rústico|suelo rustico|terreno rústico|terreno rustico|adosad[oa]|paread[oa]|medianer[oa]|semiadosad[oa]|reforma integral|para reformar|a reformar|necesita reforma|requiere reforma|proyecto de reforma|ruina|derribo|inhabitable|obra inacabada|sin terminar|medio construir|casa a medio construir|inscrita.{0,20}en construcción|inscrita.{0,20}en construccion|reservada|bungalow|camping)/i;
 const candidate=h=>
+  h.status==="verified" &&
   h.active!==false &&
   !HARD_EXCLUDE.test((h.title||"")+" "+(h.summary||"")) &&
   Number.isFinite(Number(h.price)) &&
@@ -119,6 +120,7 @@ function transformProperty(row){
   const source=sources[0]||{};
   return {
     id:row.fingerprint||row.id,
+    status:row.status,
     provider:source.provider||"Fuente",
     title:row.title,
     place:row.locality,
@@ -157,7 +159,7 @@ async function load(silent=false){
     const [{data:rows,error},{data:health,error:healthError}]=await Promise.all([
       db.from("properties")
         .select("*, listing_sources(provider,url,image_url,published_at,active)")
-        .in("status",["candidate","verified"])
+        .eq("status","verified")
         .lte("price",185000)
         .gte("bedrooms",3)
         .order("published_at",{ascending:false,nullsFirst:false}),
