@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-05T17:37:15.812Z",
+  "generatedAt": "2026-10-05T17:40:22.577Z",
   "rules": {
     "maxPrice": 185000,
     "minBedrooms": 3,
@@ -66,13 +66,13 @@
       "price": 144000,
       "bedrooms": 3,
       "plotM2": null,
-      "houseM2": 3149,
+      "houseM2": 49,
       "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/dee8ccbf-6896-48da-a01e-85ab70794dc1/d",
       "summary": "Venta de casa en Torrelles de Foix. 49 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "lastSeen": "2026-10-05T17:40:22.577Z",
       "active": true,
-      "score": 91,
+      "score": 88,
       "occupancyStatus": "no_signals",
       "independentStatus": "confirmed",
       "conditionStatus": "confirmed",
@@ -97,11 +97,11 @@
       "price": 156000,
       "bedrooms": 3,
       "plotM2": 600,
-      "houseM2": 1242,
+      "houseM2": 242,
       "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
       "summary": "Venta de casa en Torrelles de Foix. 242 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "lastSeen": "2026-10-05T17:40:22.577Z",
       "active": true,
       "score": 87,
       "occupancyStatus": "no_signals",
@@ -147,7 +147,7 @@
         }
       ],
       "missedRuns": 1,
-      "lastCheckFailedAt": "2026-10-05T17:37:15.812Z"
+      "lastCheckFailedAt": "2026-10-05T17:40:22.577Z"
     },
     {
       "id": "habitaclia-86cee6605822",
@@ -158,11 +158,11 @@
       "price": 180000,
       "bedrooms": 3,
       "plotM2": 571,
-      "houseM2": 1571,
+      "houseM2": 571,
       "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1f7a4e71-5a3e-474d-a7bf-b111c38c1c2b/d",
       "summary": "Venta de casa en Torrelles de Foix. 571 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "lastSeen": "2026-10-05T17:40:22.577Z",
       "active": true,
       "score": 83,
       "occupancyStatus": "no_signals",
@@ -189,11 +189,11 @@
       "price": 160000,
       "bedrooms": 3,
       "plotM2": null,
-      "houseM2": 2134,
+      "houseM2": 134,
       "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
       "summary": "Venta de casa en Niàgara Parc - Àgora Parc, Tordera. 134 m², 3 habitaciones, 2 baños. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "lastSeen": "2026-10-05T17:40:22.577Z",
       "active": true,
       "score": 82,
       "occupancyStatus": "no_signals",
@@ -239,7 +239,7 @@
         }
       ],
       "missedRuns": 0,
-      "lastChecked": "2026-10-05T17:37:15.812Z"
+      "lastChecked": "2026-10-05T17:40:22.577Z"
     }
   ]
 }
