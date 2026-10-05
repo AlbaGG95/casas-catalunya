@@ -11,8 +11,8 @@ const MIN_BEDROOMS=3;
 const MAX_DRIVE_MINUTES=90;
 const ORIGIN={lat:41.4247,lon:2.1647,label:"08032 Barcelona"};
 const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://github.com/AlbaGG95/casas-catalunya)";
-const MAX_DETAILS=MODE==="deep"?520:140;
-const MAX_REVALIDATE=MODE==="deep"?100:18;
+const MAX_DETAILS=MODE==="deep"?1600:360;
+const MAX_REVALIDATE=MODE==="deep"?160:36;
 
 const PROVINCES=[
   {name:"Barcelona",slug:"barcelona"},
@@ -23,36 +23,28 @@ const PROVINCES=[
 
 function sourceDefinitions(){
   const out=[];
+  // Interleave provinces so one large province can never consume the full scan.
   for(const p of PROVINCES){
     out.push({
       provider:"Fotocasa",province:p.name,kind:"recent",
       base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3`,
-      pages:1
+      pages:1,maxDetails:MODE==="deep"?70:45
+    });
+    out.push({
+      provider:"Indomio",province:p.name,kind:MODE==="recent"?"recentish":"deep",
+      base:`https://www.indomio.es/venta-casas/${p.slug}-provincia/con-jardin/`,
+      pages:MODE==="deep"?10:2,maxDetails:MODE==="deep"?120:45
     });
     out.push({
       provider:"Habitaclia",province:p.name,kind:MODE==="recent"?"recentish":"deep",
       base:`https://www.habitaclia.com/comprar/chalets/${p.slug}-provincia/baratos/s`,
-      pages:MODE==="deep"?8:2
-    });
-    out.push({
-      provider:"Habitaclia",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.habitaclia.com/comprar/casas/${p.slug}-provincia/baratos/s`,
-      pages:MODE==="deep"?6:1
+      pages:MODE==="deep"?8:2,maxDetails:MODE==="deep"?110:45
     });
     out.push({
       provider:"Pisos.com",province:p.name,kind:MODE==="recent"?"recentish":"deep",
       base:`https://www.pisos.com/venta/casas-${p.slug}/con-3-habitaciones/hasta-185000/`,
-      pages:MODE==="deep"?8:2
+      pages:MODE==="deep"?8:2,maxDetails:MODE==="deep"?100:40
     });
-  }
-  if(MODE==="deep"){
-    for(const p of PROVINCES){
-      out.push({
-        provider:"Fotocasa",province:p.name,kind:"deep",
-        base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3&sortOrderDesc=false&sortType=price`,
-        pages:1
-      });
-    }
   }
   return out;
 }
@@ -173,6 +165,8 @@ function discover(src,base,html){
     ? [/https?:\\?\/\\?\/www\.fotocasa\.es\\?\/es\\?\/comprar\\?\/vivienda\\?\/[^"'<>\s]+/gi,/\/es\/comprar\/vivienda\/[^"'<>\s]+/gi]
     : src.provider==="Habitaclia"
     ? [/https?:\\?\/\\?\/www\.habitaclia\.com\\?\/comprar\\?\/(?:vivienda|casa|chalet)\\?\/[^"'<>\s]+?\\?\/d/gi,/\/comprar\/(?:vivienda|casa|chalet)\/[^"'<>\s]+?\/d/gi]
+    : src.provider==="Indomio"
+    ? [/https?:\\?\/\\?\/www\.indomio\.es\\?\/anuncios\\?\/\d+\\?\/?/gi,/\/anuncios\/\d+\/?/gi]
     : [/https?:\\?\/\\?\/www\.pisos\.com\\?\/comprar\\?\/[^"'<>\s]+/gi,/\/comprar\/[^"'<>\s]+/gi];
   for(const rx of patterns){
     for(const m of html.matchAll(rx)){
@@ -181,7 +175,7 @@ function discover(src,base,html){
       if(u&&isDetail(src.provider,u)&&!found.has(u))found.set(u,{url:u,listText:""});
     }
   }
-  return [...found.values()].slice(0,80);
+  return [...found.values()].slice(0,140);
 }
 function allJsonLd($){
   const items=[];
@@ -198,6 +192,25 @@ function allJsonLd($){
   });
   return items;
 }
+function relevantText($,items){
+  const chunks=[];
+  const title=clean($("h1").first().text()||$("title").text());
+  const meta=clean($('meta[name="description"]').attr("content"));
+  if(title)chunks.push(title);
+  if(meta)chunks.push(meta);
+  for(const x of items){
+    for(const v of [x?.description,x?.headline,x?.name]){
+      if(typeof v==="string"&&v.length>20)chunks.push(clean(v));
+    }
+  }
+  // Clone the central content and remove navigation, related-listing carousels and footers.
+  const root=$("main").first().length?$("main").first().clone():$("body").clone();
+  root.find("nav,footer,header,aside,script,style,noscript,[class*='related' i],[class*='similar' i],[class*='recommend' i],[class*='carousel' i],[class*='suggest' i]").remove();
+  const mainText=clean(root.text());
+  if(mainText)chunks.push(mainText.slice(0,22000));
+  return clean(chunks.join(" "));
+}
+
 function firstNumber(v){
   if(v==null)return null;
   const raw=String(v).replace(/[^0-9.,]/g,"");
@@ -216,7 +229,7 @@ function extractPrice(text,items){
 function extractBedrooms(text,items){
   for(const x of items){
     for(const v of [x.numberOfRooms,x.numberOfBedrooms,x.numberOfBedroomsTotal,x.bedrooms]){
-      const n=firstNumber(v);if(n&&n<30)return Math.round(n);
+      const n=firstNumber(v);if(n&&n<=12)return Math.round(n);
     }
   }
   const m=text.match(/(\d{1,2})\s*(?:hab\.?|habs\.?|habitaciones?|dormitorios?)/i);
@@ -305,6 +318,11 @@ function extractPublishedAt(items,$,text,sourceKind,now){
       const d=parseDateValue(v);if(d)return {publishedAt:d,evidence:"structured"};
     }
   }
+  const updatedMatch=text.match(/(?:anuncio\s+)?actualizado\s+el\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if(updatedMatch){
+    const d=new Date(Date.UTC(Number(updatedMatch[3]),Number(updatedMatch[2])-1,Number(updatedMatch[1]),12,0,0));
+    return {publishedAt:d.toISOString(),evidence:"updated_date"};
+  }
   const dt=$("time[datetime]").first().attr("datetime");
   const parsed=parseDateValue(dt);if(parsed)return {publishedAt:parsed,evidence:"time_element"};
   if(/\bhoy\b/i.test(text))return {publishedAt:now,evidence:"page_text"};
@@ -336,7 +354,7 @@ function freshnessStatus(publishedAt,evidence,now){
   if(!publishedAt)return "unknown";
   const days=(new Date(now)-new Date(publishedAt))/86400000;
   if(days<=14)return "recent";
-  if(days>60)return "old";
+  if(days>90)return "old";
   return "normal";
 }
 function idFor(provider,url){
@@ -443,7 +461,7 @@ function parseDetail(src,url,html,now){
     financingStatus:"no_restrictions_detected",
     registryStatus:POSITIVE.clearCharges.test(text)?"claimed_clear":"pending",
     independentStatus:POSITIVE.independent.test(text)?"confirmed":"pending",
-    conditionStatus:"confirmed",
+    conditionStatus:conditionPositive?"confirmed":"pending",
     fiberStatus:POSITIVE.fiber.test(text)?"confirmed":"pending",
     servicesStatus:POSITIVE.services.test(text)?"confirmed":"pending",
     travelStatus:"pending",driveMinutes:null,geo:extractGeo(items),
@@ -477,9 +495,9 @@ async function main(){
 
   for(const src of sourceDefinitions()){
     if(detailBudget<=0)break;
-    const status={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};
+    const status={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};\n    let sourceBudget=Math.min(src.maxDetails||80,detailBudget);
     try{
-      for(let page=1;page<=src.pages&&detailBudget>0;page++){
+      for(let page=1;page<=src.pages&&detailBudget>0&&sourceBudget>0;page++){
         const url=pageUrl(src,page);
         let html;
         try{html=await fetchHtml(url)}catch(e){if(page===1)throw e;break}
@@ -487,9 +505,9 @@ async function main(){
         const candidates=discover(src,url,html);
         status.discovered+=candidates.length;
         for(const c of candidates){
-          if(detailBudget<=0)break;
+          if(detailBudget<=0||sourceBudget<=0)break;
           if(found.has(c.url)){continue}
-          detailBudget--;status.checked++;
+          detailBudget--;sourceBudget--;status.checked++;
           try{
             const detail=await fetchHtml(c.url);
             const parsed=parseDetail(src,c.url,detail,now);
@@ -527,7 +545,7 @@ async function main(){
 
   for(const old of revalidate){
     try{
-      const html=await fetchHtml(old.url),$=cheerio.load(html),text=clean($("body").text());
+      const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),text=relevantText($,items);
       const block=blockReason(text),conditionBlock=badConditionReason(text);
       if(isUnavailable(text)||block||conditionBlock){
         found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":(block||conditionBlock)});
