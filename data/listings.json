@@ -1,9 +1,75 @@
 {
-  "generatedAt": "2026-10-05T17:30:00.000Z",
+  "generatedAt": "2026-10-05T17:34:16.868Z",
+  "rules": {
+    "maxPrice": 185000,
+    "minBedrooms": 3,
+    "gardenRequired": true,
+    "occupiedRejected": true
+  },
   "sourceStatus": {
-    "seed": "ok"
+    "Fotocasa Barcelona": {
+      "ok": true,
+      "discovered": 3
+    },
+    "Fotocasa Tarragona": {
+      "ok": true,
+      "discovered": 3
+    },
+    "Fotocasa Girona": {
+      "ok": true,
+      "discovered": 4
+    },
+    "Fotocasa Lleida": {
+      "ok": true,
+      "discovered": 3
+    },
+    "Yaencontre Barcelona": {
+      "ok": false,
+      "error": "HTTP 403"
+    },
+    "Yaencontre Tarragona": {
+      "ok": false,
+      "error": "HTTP 403"
+    },
+    "Pisos.com Barcelona": {
+      "ok": true,
+      "discovered": 24
+    },
+    "Pisos.com Tarragona": {
+      "ok": true,
+      "discovered": 24
+    }
   },
   "listings": [
+    {
+      "id": "habitaclia-tordera-160",
+      "provider": "Habitaclia",
+      "title": "Casa independiente con piscina",
+      "place": "Tordera",
+      "province": "Barcelona",
+      "price": 160000,
+      "bedrooms": 3,
+      "plotM2": 1950,
+      "houseM2": 134,
+      "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
+      "summary": "Casa independiente de 3 habitaciones y 2 baños, jardín, gran finca y piscina. Requiere revisión documental reforzada por precio.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T00:00:00.000Z",
+      "active": true,
+      "score": 90,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "confirmed",
+      "conditionStatus": "pending",
+      "fiberStatus": "pending",
+      "travelStatus": "pending",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 160000
+        }
+      ],
+      "missedRuns": 1
+    },
     {
       "id": "habitaclia-torrelles-180",
       "provider": "Habitaclia",
@@ -25,7 +91,13 @@
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
       "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":180000}]
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 180000
+        }
+      ],
+      "missedRuns": 1
     },
     {
       "id": "habitaclia-sant-vicenc-180",
@@ -48,30 +120,13 @@
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
       "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":180000}]
-    },
-    {
-      "id": "habitaclia-tordera-160",
-      "provider": "Habitaclia",
-      "title": "Casa independiente con piscina",
-      "place": "Tordera",
-      "province": "Barcelona",
-      "price": 160000,
-      "bedrooms": 3,
-      "plotM2": 1950,
-      "houseM2": 134,
-      "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
-      "summary": "Casa independiente de 3 habitaciones y 2 baños, jardín, gran finca y piscina. Requiere revisión documental reforzada por precio.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
-      "active": true,
-      "score": 90,
-      "occupancyStatus": "no_signals",
-      "independentStatus": "confirmed",
-      "conditionStatus": "pending",
-      "fiberStatus": "pending",
-      "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":160000}]
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 180000
+        }
+      ],
+      "missedRuns": 1
     },
     {
       "id": "habitaclia-torrelles-160",
@@ -94,30 +149,13 @@
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
       "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":160000}]
-    },
-    {
-      "id": "habitaclia-can-coral-156",
-      "provider": "Habitaclia",
-      "title": "Casa en Can Coral",
-      "place": "Torrelles de Foix",
-      "province": "Barcelona",
-      "price": 156000,
-      "bedrooms": 3,
-      "plotM2": 655,
-      "houseM2": null,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
-      "summary": "Jardín, garaje, dos terrazas y suministros dados de alta. Estado anunciado como de origen.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
-      "active": true,
-      "score": 72,
-      "occupancyStatus": "no_signals",
-      "independentStatus": "pending",
-      "conditionStatus": "pending",
-      "fiberStatus": "pending",
-      "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":156000}]
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 160000
+        }
+      ],
+      "missedRuns": 1
     },
     {
       "id": "habitaclia-plana-144",
@@ -140,7 +178,42 @@
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
       "travelStatus": "pending",
-      "priceHistory": [{"date":"2026-10-05","price":144000}]
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 144000
+        }
+      ],
+      "missedRuns": 1
+    },
+    {
+      "id": "habitaclia-can-coral-156",
+      "provider": "Habitaclia",
+      "title": "Casa en Can Coral",
+      "place": "Torrelles de Foix",
+      "province": "Barcelona",
+      "price": 156000,
+      "bedrooms": 3,
+      "plotM2": 655,
+      "houseM2": null,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
+      "summary": "Jardín, garaje, dos terrazas y suministros dados de alta. Estado anunciado como de origen.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T00:00:00.000Z",
+      "active": true,
+      "score": 72,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "pending",
+      "conditionStatus": "pending",
+      "fiberStatus": "pending",
+      "travelStatus": "pending",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 156000
+        }
+      ],
+      "missedRuns": 1
     }
   ]
 }
