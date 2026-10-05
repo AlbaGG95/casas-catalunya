@@ -198,3 +198,5 @@ function subscribeRealtime(){
 [els.search,els.province,els.budget,els.status,els.sort].forEach(x=>x.addEventListener(x===els.search?"input":"change",render));
 load().then(subscribeRealtime);
 setInterval(()=>load(true),60000);
+
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(e=>console.warn("PWA service worker",e)));}
