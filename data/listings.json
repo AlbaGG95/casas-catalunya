@@ -1,123 +1,150 @@
 {
-  "generatedAt": "2026-10-05T17:40:22.577Z",
+  "generatedAt": "2026-10-05T17:56:25.635Z",
+  "scanMode": "deep",
   "rules": {
+    "preferredMaxPrice": 180000,
     "maxPrice": 185000,
     "minBedrooms": 3,
     "gardenRequired": true,
-    "occupiedRejected": true
+    "occupiedRejected": true,
+    "maxDriveMinutes": 90,
+    "condition": "ready_to_live",
+    "origin": "08032 Barcelona"
+  },
+  "stats": {
+    "active": 7,
+    "recent": 0,
+    "under180": 7,
+    "stretch": 0,
+    "checkedDetails": 520,
+    "rejectionTotals": {
+      "ocupada": 227,
+      "sin jardín/parcela detectada": 53,
+      "adosada": 33,
+      "ruina/derribo": 2,
+      "reforma integral": 64,
+      "mal estado": 4,
+      "sin evidencia suficiente de buen estado": 28,
+      "pareada": 2,
+      "subasta": 31,
+      "nuda propiedad": 2,
+      "alquilada": 7,
+      "sin posesión": 26,
+      "no visitable": 2,
+      "inquilinos": 2,
+      "proindiviso": 2,
+      "sin terminar": 1,
+      "precio": 1,
+      "uso no habitual": 2,
+      "habitaciones": 1,
+      "sin cédula": 2,
+      "finca rústica": 2
+    }
   },
   "sourceStatus": {
-    "Fotocasa Barcelona": {
+    "Fotocasa Barcelona recent": {
       "ok": true,
-      "discovered": 3
+      "pages": 1,
+      "discovered": 62,
+      "checked": 62,
+      "accepted": 0,
+      "rejected": {
+        "ocupada": 62
+      }
     },
-    "Fotocasa Tarragona": {
+    "Habitaclia Barcelona deep": {
       "ok": true,
-      "discovered": 3
+      "pages": 6,
+      "discovered": 181,
+      "checked": 181,
+      "accepted": 1,
+      "rejected": {
+        "sin jardín/parcela detectada": 21,
+        "precio": 1,
+        "sin posesión": 15,
+        "subasta": 14,
+        "reforma integral": 33,
+        "ocupada": 49,
+        "error detalle": 6,
+        "adosada": 18,
+        "uso no habitual": 2,
+        "proindiviso": 1,
+        "mal estado": 2,
+        "no visitable": 1,
+        "sin evidencia suficiente de buen estado": 7,
+        "pareada": 1,
+        "ruina/derribo": 1,
+        "habitaciones": 1,
+        "alquilada": 3,
+        "nuda propiedad": 1,
+        "sin cédula": 2,
+        "finca rústica": 1
+      }
     },
-    "Fotocasa Girona": {
+    "Pisos.com Barcelona deep": {
       "ok": true,
-      "discovered": 3
-    },
-    "Fotocasa Lleida": {
-      "ok": true,
-      "discovered": 3
-    },
-    "Habitaclia Barcelona": {
-      "ok": true,
-      "discovered": 24
-    },
-    "Habitaclia Tarragona": {
-      "ok": true,
-      "discovered": 24
-    },
-    "Habitaclia Girona": {
-      "ok": true,
-      "discovered": 24
-    },
-    "Habitaclia Lleida": {
-      "ok": true,
-      "discovered": 24
-    },
-    "Yaencontre Barcelona": {
-      "ok": false,
-      "error": "HTTP 403"
-    },
-    "Yaencontre Tarragona": {
-      "ok": false,
-      "error": "HTTP 403"
-    },
-    "Pisos.com Barcelona": {
-      "ok": true,
-      "discovered": 24
-    },
-    "Pisos.com Tarragona": {
-      "ok": true,
-      "discovered": 24
+      "pages": 2,
+      "discovered": 60,
+      "checked": 31,
+      "accepted": 1,
+      "rejected": {
+        "reforma integral": 13,
+        "sin jardín/parcela detectada": 2,
+        "ocupada": 2,
+        "sin evidencia suficiente de buen estado": 2,
+        "inquilinos": 1,
+        "adosada": 7,
+        "alquilada": 2,
+        "finca rústica": 1
+      }
     }
   },
   "listings": [
     {
-      "id": "habitaclia-abe41dd76a0e",
+      "id": "habitaclia-d210ec20c697be",
       "provider": "Habitaclia",
-      "title": "Casa con jardín en venta en Torrelles de Foix",
-      "place": "",
+      "title": "Chalet con jardín en venta en Calle Bruc",
+      "place": "Calle Bruc",
       "province": "Barcelona",
-      "price": 144000,
+      "price": 110000,
       "bedrooms": 3,
+      "houseM2": 106,
       "plotM2": null,
-      "houseM2": 49,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/dee8ccbf-6896-48da-a01e-85ab70794dc1/d",
-      "summary": "Venta de casa en Torrelles de Foix. 49 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:40:22.577Z",
+      "url": "https://www.habitaclia.com/comprar/chalet/la-torre-de-claramunt/dc73ac3b-d87f-4ba4-804b-5341f4d17b5d/d",
+      "imageUrl": null,
+      "summary": "Venta de chalet en Calle Bruc, La Torre de Claramunt. 106 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T17:56:25.635Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
+      "lastChecked": "2026-10-05T17:56:25.635Z",
       "active": true,
-      "score": 88,
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
       "occupancyStatus": "no_signals",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
       "independentStatus": "confirmed",
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
-      "travelStatus": "pending",
+      "servicesStatus": "pending",
+      "travelStatus": "confirmed",
+      "driveMinutes": 50,
+      "geo": {
+        "lat": 41.2248332,
+        "lon": 1.7158909
+      },
+      "hasGarage": true,
+      "hasPool": false,
+      "stretchBudget": false,
+      "score": 88,
+      "missedRuns": 0,
       "priceHistory": [
         {
           "date": "2026-10-05",
-          "price": 144000
+          "price": 110000
         }
-      ],
-      "missedRuns": 0,
-      "driveMinutes": null,
-      "geo": null
-    },
-    {
-      "id": "habitaclia-b251ed481fca",
-      "provider": "Habitaclia",
-      "title": "Casa con terraza en venta en Torrelles de Foix",
-      "place": "",
-      "province": "Barcelona",
-      "price": 156000,
-      "bedrooms": 3,
-      "plotM2": 600,
-      "houseM2": 242,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
-      "summary": "Venta de casa en Torrelles de Foix. 242 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:40:22.577Z",
-      "active": true,
-      "score": 87,
-      "occupancyStatus": "no_signals",
-      "independentStatus": "pending",
-      "conditionStatus": "confirmed",
-      "fiberStatus": "pending",
-      "travelStatus": "pending",
-      "priceHistory": [
-        {
-          "date": "2026-10-05",
-          "price": 156000
-        }
-      ],
-      "missedRuns": 0,
-      "driveMinutes": null,
-      "geo": null
+      ]
     },
     {
       "id": "habitaclia-sant-vicenc-180",
@@ -147,13 +174,60 @@
         }
       ],
       "missedRuns": 1,
-      "lastCheckFailedAt": "2026-10-05T17:40:22.577Z"
+      "lastCheckFailedAt": "2026-10-05T17:56:25.635Z",
+      "lastChecked": "2026-10-05T17:56:25.635Z"
     },
     {
-      "id": "habitaclia-86cee6605822",
+      "id": "habitaclia-abe41dd76a0e69",
       "provider": "Habitaclia",
       "title": "Casa con jardín en venta en Torrelles de Foix",
-      "place": "",
+      "place": "Torrelles de Foix",
+      "province": "Barcelona",
+      "price": 144000,
+      "bedrooms": 3,
+      "plotM2": null,
+      "houseM2": 49,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/dee8ccbf-6896-48da-a01e-85ab70794dc1/d",
+      "summary": "Venta de casa en Torrelles de Foix. 49 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
+      "active": true,
+      "score": 80,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "confirmed",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "travelStatus": "confirmed",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 144000
+        }
+      ],
+      "missedRuns": 0,
+      "driveMinutes": 61,
+      "geo": {
+        "lat": 41.387735,
+        "lon": 1.5723453
+      },
+      "imageUrl": null,
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
+      "servicesStatus": "pending",
+      "hasGarage": false,
+      "hasPool": false,
+      "stretchBudget": false
+    },
+    {
+      "id": "habitaclia-86cee660582281",
+      "provider": "Habitaclia",
+      "title": "Casa con jardín en venta en Torrelles de Foix",
+      "place": "Torrelles de Foix",
       "province": "Barcelona",
       "price": 180000,
       "bedrooms": 3,
@@ -162,14 +236,14 @@
       "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1f7a4e71-5a3e-474d-a7bf-b111c38c1c2b/d",
       "summary": "Venta de casa en Torrelles de Foix. 571 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:40:22.577Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
       "active": true,
-      "score": 83,
+      "score": 79,
       "occupancyStatus": "no_signals",
       "independentStatus": "pending",
       "conditionStatus": "confirmed",
       "fiberStatus": "pending",
-      "travelStatus": "pending",
+      "travelStatus": "confirmed",
       "priceHistory": [
         {
           "date": "2026-10-05",
@@ -177,14 +251,75 @@
         }
       ],
       "missedRuns": 0,
-      "driveMinutes": null,
-      "geo": null
+      "driveMinutes": 61,
+      "geo": {
+        "lat": 41.387735,
+        "lon": 1.5723453
+      },
+      "imageUrl": null,
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
+      "servicesStatus": "pending",
+      "hasGarage": true,
+      "hasPool": false,
+      "stretchBudget": false
     },
     {
-      "id": "habitaclia-da038c28b2ab",
+      "id": "habitaclia-5ee7225e39dc2a",
+      "provider": "Habitaclia",
+      "title": "Casa rústica en venta en Nord-oest",
+      "place": "Poble Nou",
+      "province": "Barcelona",
+      "price": 20000,
+      "bedrooms": 26,
+      "houseM2": 21,
+      "plotM2": null,
+      "url": "https://www.habitaclia.com/comprar/vivienda/nord-oest/terrassa/0c9cbaa7-8514-443f-af8d-aef39c160d01/d",
+      "imageUrl": null,
+      "summary": "Venta de casa rústica en Poble Nou, Terrassa. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T17:56:25.635Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "active": true,
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
+      "occupancyStatus": "no_signals",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
+      "independentStatus": "pending",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "servicesStatus": "pending",
+      "travelStatus": "confirmed",
+      "driveMinutes": 50,
+      "geo": {
+        "lat": 41.7332523,
+        "lon": 1.8261869
+      },
+      "hasGarage": true,
+      "hasPool": true,
+      "stretchBudget": false,
+      "score": 78,
+      "missedRuns": 0,
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 20000
+        }
+      ]
+    },
+    {
+      "id": "habitaclia-da038c28b2ab6e",
       "provider": "Habitaclia",
       "title": "Casa en venta en Niàgara Parc - Àgora Parc",
-      "place": "",
+      "place": "Niàgara Parc - Àgora Parc",
       "province": "Barcelona",
       "price": 160000,
       "bedrooms": 3,
@@ -193,9 +328,9 @@
       "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
       "summary": "Venta de casa en Niàgara Parc - Àgora Parc, Tordera. 134 m², 3 habitaciones, 2 baños. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T17:40:22.577Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
       "active": true,
-      "score": 82,
+      "score": 68,
       "occupancyStatus": "no_signals",
       "independentStatus": "pending",
       "conditionStatus": "confirmed",
@@ -209,7 +344,95 @@
       ],
       "missedRuns": 0,
       "driveMinutes": null,
-      "geo": null
+      "geo": null,
+      "imageUrl": null,
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
+      "servicesStatus": "pending",
+      "hasGarage": false,
+      "hasPool": true,
+      "stretchBudget": false
+    },
+    {
+      "id": "pisos-com-c2a5a08431f0fe",
+      "provider": "Pisos.com",
+      "title": "Casa en venta en Sant Fruitós de Bages",
+      "place": "venta en Sant Fruitós de Bages",
+      "province": "Barcelona",
+      "price": 129000,
+      "bedrooms": 3,
+      "houseM2": 72,
+      "plotM2": null,
+      "url": "https://www.pisos.com/comprar/casa-sant_fruitos_de_bages_centro_urbano-66667794127_531526/",
+      "imageUrl": "https://fotos.imghs.net/xl-wp/531526/66667794127.531526/531526_66667794127_008139d2-44af-4842-bca1-e1d1108f359c.jpg",
+      "summary": "Casa semireformada de tres habitaciones dos dobles y una individual, salón comedor con cocina integrada y salida a un patio con un trastero casa muy soleada y zona muy tranquila. Informate.",
+      "firstSeen": "2026-10-05T17:56:25.635Z",
+      "lastSeen": "2026-10-05T17:56:25.635Z",
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "active": true,
+      "publishedAt": null,
+      "freshnessEvidence": "unknown",
+      "freshnessStatus": "unknown",
+      "discoveredVia": "deep",
+      "occupancyStatus": "no_signals",
+      "financingStatus": "no_restrictions_detected",
+      "registryStatus": "pending",
+      "independentStatus": "pending",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "servicesStatus": "pending",
+      "travelStatus": "pending",
+      "driveMinutes": null,
+      "geo": null,
+      "hasGarage": false,
+      "hasPool": false,
+      "stretchBudget": false,
+      "score": 64,
+      "missedRuns": 0,
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 129000
+        }
+      ]
+    },
+    {
+      "id": "habitaclia-b251ed481fca",
+      "provider": "Habitaclia",
+      "title": "Casa con terraza en venta en Torrelles de Foix",
+      "place": "",
+      "province": "Barcelona",
+      "price": 156000,
+      "bedrooms": 3,
+      "plotM2": 600,
+      "houseM2": 242,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
+      "summary": "Venta de casa en Torrelles de Foix. 242 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:40:22.577Z",
+      "active": false,
+      "score": 87,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "pending",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "travelStatus": "pending",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 156000
+        }
+      ],
+      "missedRuns": 0,
+      "driveMinutes": null,
+      "geo": null,
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "removalReason": "estado de origen"
     },
     {
       "id": "habitaclia-torrelles-160",
@@ -225,7 +448,7 @@
       "summary": "Mucho espacio construido y parcela amplia. Conviene comprobar que todos los metros y anexos estén correctamente declarados.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
       "lastSeen": "2026-10-05T00:00:00.000Z",
-      "active": true,
+      "active": false,
       "score": 80,
       "occupancyStatus": "no_signals",
       "independentStatus": "pending",
@@ -239,7 +462,8 @@
         }
       ],
       "missedRuns": 0,
-      "lastChecked": "2026-10-05T17:40:22.577Z"
+      "lastChecked": "2026-10-05T17:56:25.635Z",
+      "removalReason": "sin evidencia suficiente de buen estado"
     }
   ]
 }

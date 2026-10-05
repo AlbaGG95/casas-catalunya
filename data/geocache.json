@@ -1,1 +1,14 @@
-{}
+{
+  "calle-bruc-barcelona": {
+    "lat": 41.2248332,
+    "lon": 1.7158909
+  },
+  "poble-nou-barcelona": {
+    "lat": 41.7332523,
+    "lon": 1.8261869
+  },
+  "torrelles-de-foix-barcelona": {
+    "lat": 41.387735,
+    "lon": 1.5723453
+  }
+}
