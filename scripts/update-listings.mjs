@@ -5,6 +5,10 @@ import * as cheerio from "cheerio";
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
 const MODE=(process.env.SCAN_MODE||"recent").toLowerCase()==="deep"?"deep":"recent";
+const SCAN_PROVIDER=(process.env.SCAN_PROVIDER||"").trim();
+const SCAN_PROVINCE=(process.env.SCAN_PROVINCE||"").trim();
+const INCREMENTAL_ONLY=(process.env.INCREMENTAL_ONLY||"false")==="true";
+const OUTPUT_PATH=process.env.OUTPUT_PATH||"data/listings.json";
 const MAX_PRICE=185000;
 const SOFT_PRICE=180000;
 const MIN_BEDROOMS=3;
@@ -46,7 +50,10 @@ function sourceDefinitions(){
       pages:MODE==="deep"?8:2,maxDetails:MODE==="deep"?100:40
     });
   }
-  return out;
+  return out.filter(src =>
+    (!SCAN_PROVIDER || src.provider===SCAN_PROVIDER) &&
+    (!SCAN_PROVINCE || src.province===SCAN_PROVINCE)
+  );
 }
 
 const BLOCK_PATTERNS=[
@@ -523,7 +530,9 @@ function isUnavailable(text){
 
 async function main(){
   const now=new Date().toISOString();
-  const prior=await readJson(DATA_PATH,{generatedAt:null,listings:[],sourceStatus:{}});
+  const prior=INCREMENTAL_ONLY
+    ? {generatedAt:null,listings:[],sourceStatus:{}}
+    : await readJson(DATA_PATH,{generatedAt:null,listings:[],sourceStatus:{}});
   const geocache=await readJson(GEO_PATH,{});
   const byUrl=new Map((prior.listings||[]).map(x=>[x.url,x]));
   const found=new Map();
@@ -580,7 +589,7 @@ async function main(){
     sourceStatus[sourceKey(src)]=status;
   }
 
-  const revalidate=(prior.listings||[])
+  const revalidate=INCREMENTAL_ONLY ? [] : (prior.listings||[])
     .filter(x=>x.active!==false&&!found.has(x.url))
     .sort((a,b)=>new Date(a.lastChecked||a.lastSeen||0)-new Date(b.lastChecked||b.lastSeen||0))
     .slice(0,MAX_REVALIDATE);
@@ -612,7 +621,7 @@ async function main(){
   }
 
   const revalidatedUrls=new Set(revalidate.map(x=>x.url));
-  for(const old of prior.listings||[]){
+  for(const old of (INCREMENTAL_ONLY ? [] : (prior.listings||[]))){
     if(found.has(old.url))continue;
     const lastOk=new Date(old.lastSeen||old.firstSeen||0);
     const ageDays=(new Date(now)-lastOk)/86400000;
@@ -646,8 +655,9 @@ async function main(){
     sourceStatus,
     listings
   };
-  await fs.writeFile(DATA_PATH,JSON.stringify(out,null,2)+"\n");
-  await fs.writeFile(GEO_PATH,JSON.stringify(geocache,null,2)+"\n");
+  await fs.mkdir(new URL("../data/",import.meta.url),{recursive:true});
+  await fs.writeFile(OUTPUT_PATH,JSON.stringify(out,null,2)+"\n");
+  if(!INCREMENTAL_ONLY) await fs.writeFile(GEO_PATH,JSON.stringify(geocache,null,2)+"\n");
   console.log(JSON.stringify({mode:MODE,active:out.stats.active,recent:out.stats.recent,under180:out.stats.under180,checked:out.stats.checkedDetails,sources:Object.keys(sourceStatus).length},null,2));
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
