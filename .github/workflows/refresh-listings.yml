@@ -1,0 +1,49 @@
+name: Actualizar viviendas
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "data/listings.json"
+  schedule:
+    - cron: "17 5,11,17,23 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-listings
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Buscar y filtrar viviendas
+        run: npm run update:listings
+
+      - name: Guardar cambios
+        shell: bash
+        run: |
+          if git diff --quiet -- data/listings.json; then
+            echo "Sin cambios"
+            exit 0
+          fi
+          git config user.name "casas-catalunya-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/listings.json
+          git commit -m "data: actualizar viviendas"
+          git push
