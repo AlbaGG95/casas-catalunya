@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        provider: ["Habitaclia", "Pisos.com", "Indomio", "Fotocasa"]
+        provider: ["Habitaclia", "Pisos.com", "Fotocasa", "Yaencontre", "Servihabitat", "Idealista", "Indomio"]
         province: ["Barcelona", "Tarragona", "Girona", "Lleida"]
 
     runs-on: ubuntu-latest
