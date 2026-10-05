@@ -497,7 +497,8 @@ async function main(){
 
   for(const src of sourceDefinitions()){
     if(detailBudget<=0)break;
-    const status={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};\n    let sourceBudget=Math.min(src.maxDetails||80,detailBudget);
+    const status={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};
+    let sourceBudget=Math.min(src.maxDetails||80,detailBudget);
     try{
       for(let page=1;page<=src.pages&&detailBudget>0&&sourceBudget>0;page++){
         const url=pageUrl(src,page);
