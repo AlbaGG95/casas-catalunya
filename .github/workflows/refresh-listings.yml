@@ -2,6 +2,10 @@ name: Actualizar viviendas
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "data/listings.json"
   schedule:
     - cron: "17 5,11,17,23 * * *"
 
