@@ -430,19 +430,20 @@ async function enrichTravel(listing,cache){
 }
 function parseDetail(src,url,html,now){
   const $=cheerio.load(html);
-  const text=clean($("body").text());
+  const items=allJsonLd($);
+  const text=relevantText($,items);
   const block=blockReason(text);if(block)return {reject:block};
   const conditionBlock=badConditionReason(text);if(conditionBlock)return {reject:conditionBlock};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
   if(!POSITIVE.garden.test(text))return {reject:"sin jardín/parcela detectada"};
-  if(!POSITIVE.condition.test(text))return {reject:"sin evidencia suficiente de buen estado"};
+  const conditionPositive=POSITIVE.condition.test(text);
 
-  const items=allJsonLd($);
   const title=clean($("h1").first().text()||$('meta[property="og:title"]').attr("content")||$("title").text()).slice(0,180);
+  if(/(?:casa|finca|mas[ií]a)\s+r[uú]stica/i.test(title))return {reject:"rústica"};
   const meta=clean($('meta[name="description"]').attr("content"));
   const price=extractPrice(text,items),bedrooms=extractBedrooms(text,items);
   if(!price||price>MAX_PRICE)return {reject:"precio"};
-  if(!bedrooms||bedrooms<MIN_BEDROOMS)return {reject:"habitaciones"};
+  if(!bedrooms||bedrooms<MIN_BEDROOMS||bedrooms>12)return {reject:"habitaciones"};
 
   const province=extractProvince(items,src.province);
   const place=extractPlace(items,$,url,src.provider,meta,title);
@@ -471,6 +472,7 @@ function parseDetail(src,url,html,now){
   listing.score=scoreOf(listing,text);
   return {listing};
 }
+
 function mergeListing(old,n,now){
   const history=Array.isArray(old?.priceHistory)?[...old.priceHistory]:[];
   const last=history.at(-1);
@@ -522,7 +524,10 @@ async function main(){
                 status.rejected[reason]=(status.rejected[reason]||0)+1;
                 rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
               }else{
-                listing.score=scoreOf(listing,clean(cheerio.load(detail)("body").text()));
+                {
+                  const _$=cheerio.load(detail),_items=allJsonLd(_$);
+                  listing.score=scoreOf(listing,relevantText(_$,_items));
+                }
                 found.set(c.url,mergeListing(byUrl.get(c.url),listing,now));
                 status.accepted++;
               }
