@@ -120,7 +120,17 @@ async function fetchHtml(url){
   }finally{clearTimeout(timer)}
 }
 function abs(base,href){
-  try{return new URL(href.replace(/\\u002F/g,"/").replace(/\\\//g,"/"),base).toString().split("#")[0]}catch{return null}
+  try{
+    const u=new URL(href.replace(/\\u002F/g,"/").replace(/\\\//g,"/"),base);
+    u.hash="";
+    // Normalize detail URLs so tracking parameters do not create duplicate properties.
+    if(/fotocasa\.es|habitaclia\.com|pisos\.com/i.test(u.hostname)){
+      for(const key of [...u.searchParams.keys()]){
+        if(/^(from|utm_|source|campaign|medium|ref)/i.test(key))u.searchParams.delete(key);
+      }
+    }
+    return u.toString();
+  }catch{return null}
 }
 function pageUrl(src,page){
   if(page<=1)return src.base;
@@ -217,14 +227,40 @@ function firstNumber(v){
   const n=Number(raw.replace(/\./g,"").replace(",","."));
   return Number.isFinite(n)&&n>0?n:null;
 }
-function extractPrice(text,items){
+function parseEuro(raw){
+  if(!raw)return null;
+  const n=Number(String(raw).replace(/[^0-9]/g,""));
+  return Number.isFinite(n)&&n>=10000&&n<=5000000?n:null;
+}
+function extractProminentPrice($){
+  const candidates=[];
+  const selectors=[
+    '[data-testid*="price" i]','[class*="price" i]','[class*="precio" i]',
+    'main','article'
+  ];
+  for(const sel of selectors){
+    const node=$(sel).first();
+    if(!node.length)continue;
+    const txt=clean(node.text()).slice(0,5000);
+    for(const m of txt.matchAll(/(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/g)){
+      const n=parseEuro(m[1]);
+      if(n)candidates.push(n);
+      if(candidates.length>=5)break;
+    }
+    if(candidates.length)break;
+  }
+  return candidates[0]||null;
+}
+function extractPrice(text,items,$){
+  const prominent=extractProminentPrice($);
+  if(prominent)return prominent;
   for(const x of items){
     for(const p of [x?.offers?.price,x?.price,x?.offers?.lowPrice]){
-      const n=firstNumber(p);if(n&&n>=10000&&n<=2000000)return Math.round(n);
+      const n=firstNumber(p);if(n&&n>=10000&&n<=5000000)return Math.round(n);
     }
   }
-  const m=text.match(/(?:precio[^0-9]{0,20})?(\d{2,3}(?:[.\s]\d{3})+|\d{5,6})\s*€/i);
-  return m?Number(m[1].replace(/[.\s]/g,"")):null;
+  const m=text.match(/(?:precio[^0-9]{0,20})?(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i);
+  return m?parseEuro(m[1]):null;
 }
 function extractBedrooms(text,items){
   for(const x of items){
@@ -441,7 +477,7 @@ function parseDetail(src,url,html,now){
   const title=clean($("h1").first().text()||$('meta[property="og:title"]').attr("content")||$("title").text()).slice(0,180);
   if(/(?:casa|finca|mas[ií]a)\s+r[uú]stica/i.test(title))return {reject:"rústica"};
   const meta=clean($('meta[name="description"]').attr("content"));
-  const price=extractPrice(text,items),bedrooms=extractBedrooms(text,items);
+  const price=extractPrice(text,items,$),bedrooms=extractBedrooms(text,items);
   if(!price||price>MAX_PRICE)return {reject:"precio"};
   if(!bedrooms||bedrooms<MIN_BEDROOMS||bedrooms>12)return {reject:"habitaciones"};
 
