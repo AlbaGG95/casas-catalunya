@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-05T17:34:16.868Z",
+  "generatedAt": "2026-10-05T17:37:15.812Z",
   "rules": {
     "maxPrice": 185000,
     "minBedrooms": 3,
@@ -17,11 +17,27 @@
     },
     "Fotocasa Girona": {
       "ok": true,
-      "discovered": 4
+      "discovered": 3
     },
     "Fotocasa Lleida": {
       "ok": true,
       "discovered": 3
+    },
+    "Habitaclia Barcelona": {
+      "ok": true,
+      "discovered": 24
+    },
+    "Habitaclia Tarragona": {
+      "ok": true,
+      "discovered": 24
+    },
+    "Habitaclia Girona": {
+      "ok": true,
+      "discovered": 24
+    },
+    "Habitaclia Lleida": {
+      "ok": true,
+      "discovered": 24
     },
     "Yaencontre Barcelona": {
       "ok": false,
@@ -42,50 +58,52 @@
   },
   "listings": [
     {
-      "id": "habitaclia-tordera-160",
+      "id": "habitaclia-abe41dd76a0e",
       "provider": "Habitaclia",
-      "title": "Casa independiente con piscina",
-      "place": "Tordera",
+      "title": "Casa con jardín en venta en Torrelles de Foix",
+      "place": "",
       "province": "Barcelona",
-      "price": 160000,
+      "price": 144000,
       "bedrooms": 3,
-      "plotM2": 1950,
-      "houseM2": 134,
-      "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
-      "summary": "Casa independiente de 3 habitaciones y 2 baños, jardín, gran finca y piscina. Requiere revisión documental reforzada por precio.",
+      "plotM2": null,
+      "houseM2": 3149,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/dee8ccbf-6896-48da-a01e-85ab70794dc1/d",
+      "summary": "Venta de casa en Torrelles de Foix. 49 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:37:15.812Z",
       "active": true,
-      "score": 90,
+      "score": 91,
       "occupancyStatus": "no_signals",
       "independentStatus": "confirmed",
-      "conditionStatus": "pending",
+      "conditionStatus": "confirmed",
       "fiberStatus": "pending",
       "travelStatus": "pending",
       "priceHistory": [
         {
           "date": "2026-10-05",
-          "price": 160000
+          "price": 144000
         }
       ],
-      "missedRuns": 1
+      "missedRuns": 0,
+      "driveMinutes": null,
+      "geo": null
     },
     {
-      "id": "habitaclia-torrelles-180",
+      "id": "habitaclia-b251ed481fca",
       "provider": "Habitaclia",
-      "title": "Casa reformada con parcela",
-      "place": "Torrelles de Foix",
+      "title": "Casa con terraza en venta en Torrelles de Foix",
+      "place": "",
       "province": "Barcelona",
-      "price": 180000,
+      "price": 156000,
       "bedrooms": 3,
-      "plotM2": 571,
-      "houseM2": null,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1f7a4e71-5a3e-474d-a7bf-b111c38c1c2b/d",
-      "summary": "Casa reformada, jardín/exterior, garaje o almacén y zona de barbacoa. Anunciada como lista para entrar.",
+      "plotM2": 600,
+      "houseM2": 1242,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
+      "summary": "Venta de casa en Torrelles de Foix. 242 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
       "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:37:15.812Z",
       "active": true,
-      "score": 88,
+      "score": 87,
       "occupancyStatus": "no_signals",
       "independentStatus": "pending",
       "conditionStatus": "confirmed",
@@ -94,10 +112,12 @@
       "priceHistory": [
         {
           "date": "2026-10-05",
-          "price": 180000
+          "price": 156000
         }
       ],
-      "missedRuns": 1
+      "missedRuns": 0,
+      "driveMinutes": null,
+      "geo": null
     },
     {
       "id": "habitaclia-sant-vicenc-180",
@@ -126,7 +146,70 @@
           "price": 180000
         }
       ],
-      "missedRuns": 1
+      "missedRuns": 1,
+      "lastCheckFailedAt": "2026-10-05T17:37:15.812Z"
+    },
+    {
+      "id": "habitaclia-86cee6605822",
+      "provider": "Habitaclia",
+      "title": "Casa con jardín en venta en Torrelles de Foix",
+      "place": "",
+      "province": "Barcelona",
+      "price": 180000,
+      "bedrooms": 3,
+      "plotM2": 571,
+      "houseM2": 1571,
+      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1f7a4e71-5a3e-474d-a7bf-b111c38c1c2b/d",
+      "summary": "Venta de casa en Torrelles de Foix. 571 m², 3 habitaciones, 1 baño. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "active": true,
+      "score": 83,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "pending",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "travelStatus": "pending",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 180000
+        }
+      ],
+      "missedRuns": 0,
+      "driveMinutes": null,
+      "geo": null
+    },
+    {
+      "id": "habitaclia-da038c28b2ab",
+      "provider": "Habitaclia",
+      "title": "Casa en venta en Niàgara Parc - Àgora Parc",
+      "place": "",
+      "province": "Barcelona",
+      "price": 160000,
+      "bedrooms": 3,
+      "plotM2": null,
+      "houseM2": 2134,
+      "url": "https://www.habitaclia.com/comprar/vivienda/niagara-parc-agora-parc/tordera/0df5cf16-d889-4512-bf5c-3908271b94cb/d",
+      "summary": "Venta de casa en Niàgara Parc - Àgora Parc, Tordera. 134 m², 3 habitaciones, 2 baños. Consulta los detalles en habitaclia.",
+      "firstSeen": "2026-10-05T00:00:00.000Z",
+      "lastSeen": "2026-10-05T17:37:15.812Z",
+      "active": true,
+      "score": 82,
+      "occupancyStatus": "no_signals",
+      "independentStatus": "pending",
+      "conditionStatus": "confirmed",
+      "fiberStatus": "pending",
+      "travelStatus": "pending",
+      "priceHistory": [
+        {
+          "date": "2026-10-05",
+          "price": 160000
+        }
+      ],
+      "missedRuns": 0,
+      "driveMinutes": null,
+      "geo": null
     },
     {
       "id": "habitaclia-torrelles-160",
@@ -155,65 +238,8 @@
           "price": 160000
         }
       ],
-      "missedRuns": 1
-    },
-    {
-      "id": "habitaclia-plana-144",
-      "provider": "Habitaclia",
-      "title": "Cuatro vientos con mucho terreno",
-      "place": "Torrelles de Foix",
-      "province": "Barcelona",
-      "price": 144000,
-      "bedrooms": 3,
-      "plotM2": 3200,
-      "houseM2": 49,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/dee8ccbf-6896-48da-a01e-85ab70794dc1/d",
-      "summary": "Estado anunciado como muy bien y gran terreno. La vivienda declarada es pequeña, por eso queda como candidata secundaria.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
-      "active": true,
-      "score": 76,
-      "occupancyStatus": "no_signals",
-      "independentStatus": "confirmed",
-      "conditionStatus": "confirmed",
-      "fiberStatus": "pending",
-      "travelStatus": "pending",
-      "priceHistory": [
-        {
-          "date": "2026-10-05",
-          "price": 144000
-        }
-      ],
-      "missedRuns": 1
-    },
-    {
-      "id": "habitaclia-can-coral-156",
-      "provider": "Habitaclia",
-      "title": "Casa en Can Coral",
-      "place": "Torrelles de Foix",
-      "province": "Barcelona",
-      "price": 156000,
-      "bedrooms": 3,
-      "plotM2": 655,
-      "houseM2": null,
-      "url": "https://www.habitaclia.com/comprar/vivienda/torrelles-de-foix/1257e0ed-24a9-4ec2-8353-97ef04e45a73/d",
-      "summary": "Jardín, garaje, dos terrazas y suministros dados de alta. Estado anunciado como de origen.",
-      "firstSeen": "2026-10-05T00:00:00.000Z",
-      "lastSeen": "2026-10-05T00:00:00.000Z",
-      "active": true,
-      "score": 72,
-      "occupancyStatus": "no_signals",
-      "independentStatus": "pending",
-      "conditionStatus": "pending",
-      "fiberStatus": "pending",
-      "travelStatus": "pending",
-      "priceHistory": [
-        {
-          "date": "2026-10-05",
-          "price": 156000
-        }
-      ],
-      "missedRuns": 1
+      "missedRuns": 0,
+      "lastChecked": "2026-10-05T17:37:15.812Z"
     }
   ]
 }
