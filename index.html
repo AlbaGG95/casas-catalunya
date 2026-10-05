@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#173d29" />
-  <title>Casa Cataluña</title>
-  <meta name="description" content="Buscador familiar automatizado de casas en Cataluña." />
+  <title>Casa Cataluña · búsqueda familiar</title>
+  <meta name="description" content="Buscador familiar automatizado de casas habitables en Cataluña." />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -17,38 +17,46 @@
       </div>
       <div class="header-meta">
         <span id="updatedAt">Cargando última revisión…</span>
-        <span class="status-dot">Automático</span>
+        <span class="status-dot">Escaneo automático</span>
       </div>
     </header>
 
     <section class="hero">
       <div>
-        <p class="eyebrow light">FILTRO ESTRICTO</p>
-        <h2>Casas que sí merece la pena mirar</h2>
+        <p class="eyebrow light">VIVIENDA HABITUAL · FILTRO ESTRICTO</p>
+        <h2>Casas recientes, habitables y sin sorpresas evidentes.</h2>
         <p class="hero-copy">
-          Hasta 185.000 €, mínimo 3 habitaciones, jardín obligatorio y prioridad a casa independiente.
-          Se excluyen anuncios con señales de ocupación, inquilinos, nuda propiedad, subasta, proindiviso,
-          reformas importantes o situaciones similares.
+          Presupuesto aprobado hasta 180.000 €. La franja 180.001–185.000 € se mantiene como margen
+          excepcional cuando la vivienda realmente compensa. Mínimo 3 habitaciones, jardín/parcela,
+          prioridad a casa independiente y máximo aproximado de 1 h 30 min desde 08032.
         </p>
       </div>
       <div class="hero-stats">
-        <article><strong id="visibleCount">0</strong><span>candidatas</span></article>
-        <article><strong id="newCount">0</strong><span>nuevas 7 días</span></article>
-        <article><strong id="freeCount">0</strong><span>libre confirmada</span></article>
+        <article><strong id="visibleCount">0</strong><span>candidatas visibles</span></article>
+        <article><strong id="newCount">0</strong><span>nuevas / recientes</span></article>
+        <article><strong id="under180Count">0</strong><span>≤ 180.000 €</span></article>
         <article><strong id="savedCount">0</strong><span>guardadas</span></article>
       </div>
     </section>
 
+    <section class="system-bar">
+      <div><strong>Último escaneo:</strong> <span id="lastScan">—</span></div>
+      <div><strong>Fuentes activas:</strong> <span id="sourceHealth">—</span></div>
+      <div><strong>Actualización web:</strong> cada 60 s</div>
+    </section>
+
     <section class="warning">
-      <strong>Importante sobre ocupación:</strong>
-      “Sin indicios de ocupación” significa que el anuncio no contiene señales problemáticas detectadas.
-      No equivale a entrega libre confirmada. La web lo muestra por separado para no dar una falsa seguridad.
+      <strong>Qué significa “correcta”:</strong>
+      la web bloquea automáticamente anuncios con señales de ocupación, alquiler vigente, nuda propiedad,
+      proindiviso, subasta, imposibilidad de visita, restricciones de financiación o reforma importante.
+      <strong>Las cargas/deudas registrales no se pueden certificar leyendo un anuncio:</strong> para marcar una
+      vivienda como “documentación verificada” hará falta nota simple y comprobación previa a reserva.
     </section>
 
     <section class="controls" aria-label="Filtros">
       <label>
         <span>Buscar</span>
-        <input id="searchInput" type="search" placeholder="Localidad o título…" />
+        <input id="searchInput" type="search" placeholder="Localidad, urbanización o título…" />
       </label>
       <label>
         <span>Provincia</span>
@@ -61,20 +69,30 @@
         </select>
       </label>
       <label>
-        <span>Estado</span>
+        <span>Presupuesto</span>
+        <select id="budgetFilter">
+          <option value="smart185">180k + hasta 185k si compensa</option>
+          <option value="180">Máximo 180.000 €</option>
+          <option value="185">Máximo 185.000 €</option>
+        </select>
+      </label>
+      <label>
+        <span>Vista</span>
         <select id="statusFilter">
-          <option value="">Todas</option>
-          <option value="new">Nuevas</option>
+          <option value="">Todas las candidatas</option>
+          <option value="new">Nuevas / recientes</option>
           <option value="best">Mejor encaje</option>
+          <option value="independent">Independiente confirmada</option>
           <option value="free">Libre confirmada</option>
-          <option value="pending">Pendientes de verificar</option>
+          <option value="pending">Con verificaciones pendientes</option>
+          <option value="saved">Guardadas</option>
         </select>
       </label>
       <label>
         <span>Ordenar</span>
         <select id="sortFilter">
-          <option value="score">Mejor encaje</option>
           <option value="recent">Más recientes</option>
+          <option value="score">Mejor encaje</option>
           <option value="price-asc">Precio menor</option>
           <option value="price-desc">Precio mayor</option>
         </select>
@@ -82,35 +100,38 @@
     </section>
 
     <section class="legend">
-      <span><i class="chip chip-new"></i> Nueva</span>
-      <span><i class="chip chip-fit"></i> Buen encaje</span>
-      <span><i class="chip chip-free"></i> Libre confirmada</span>
-      <span><i class="chip chip-pending"></i> Verificación pendiente</span>
+      <span><i class="chip chip-new"></i> Reciente</span>
+      <span><i class="chip chip-fit"></i> Muy buen encaje</span>
+      <span><i class="chip chip-free"></i> Libre indicada</span>
+      <span><i class="chip chip-stretch"></i> 180–185k</span>
+      <span><i class="chip chip-pending"></i> Falta verificar</span>
     </section>
 
     <main id="listingGrid" class="grid" aria-live="polite"></main>
     <div id="emptyState" class="empty-state" hidden>
-      No hay viviendas que coincidan con estos filtros.
+      No hay viviendas que coincidan con estos filtros. El rastreador seguirá buscando automáticamente.
     </div>
 
     <section class="method">
       <div>
-        <p class="eyebrow">CÓMO DECIDE</p>
-        <h3>Reglas automáticas</h3>
+        <p class="eyebrow">CÓMO FILTRA</p>
+        <h3>Primero descarta problemas; después puntúa el encaje.</h3>
       </div>
       <div class="method-grid">
-        <article><strong>Bloqueo duro</strong><p>Ocupada, sin posesión, inquilinos, nuda propiedad, subasta, proindiviso, no visitable o no hipotecable.</p></article>
-        <article><strong>Vivienda</strong><p>Máx. 185.000 €, 3+ habitaciones, jardín/parcela privada y tipología compatible con casa independiente.</p></article>
-        <article><strong>Estado</strong><p>Debe haber señales de buen estado, reformada, obra nueva o lista para entrar. Se rechaza reforma integral.</p></article>
-        <article><strong>Pendientes</strong><p>Fibra, cédula, cargas, entrega libre y urbanismo se mantienen visibles como verificaciones separadas.</p></article>
+        <article><strong>Bloqueo legal/comercial</strong><p>Ocupada, inquilinos, sin posesión, nuda propiedad, subasta, proindiviso, VPO con restricciones, no visitable o no hipotecable.</p></article>
+        <article><strong>Estado para entrar</strong><p>Se buscan señales de buen estado, reformada, obra nueva, seminueva o lista para entrar. Se descarta reforma integral, ruina y “estado de origen” cuando implique actualización importante.</p></article>
+        <article><strong>Vivienda familiar</strong><p>3+ habitaciones, jardín/parcela privada, casa compatible con independiente, servicios razonables y hasta 1 h 30 min cuando se puede calcular.</p></article>
+        <article><strong>Verificación real</strong><p>Fibra, cédula, cargas, urbanismo y entrega libre se muestran por separado. Una nota simple pendiente nunca se presenta como “sin deudas confirmado”.</p></article>
       </div>
     </section>
 
     <footer>
-      Uso familiar. Los enlaces abren el anuncio original. Ninguna ficha sustituye nota simple, visita,
-      comprobación urbanística, cédula, suministros o aprobación hipotecaria.
+      Uso familiar. Los enlaces abren el anuncio original. Antes de reservar: visita, nota simple,
+      cédula/habitabilidad, situación posesoria, urbanismo, suministros, fibra y aprobación bancaria final.
     </footer>
   </div>
+
+  <div id="toast" class="toast" hidden></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
