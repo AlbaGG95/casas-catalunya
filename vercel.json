@@ -1,10 +1,13 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)data/listings.json' ':(exclude)data/geocache.json'",
   "headers": [
     {
-      "source": "/data/listings.json",
+      "source": "/(.*)",
       "headers": [
-        {"key":"Cache-Control","value":"public, max-age=0, s-maxage=300, stale-while-revalidate=60"}
+        {"key":"X-Content-Type-Options","value":"nosniff"},
+        {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}
       ]
     }
   ]

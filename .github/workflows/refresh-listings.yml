@@ -2,24 +2,37 @@ name: Actualizar viviendas
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Tipo de escaneo"
+        required: false
+        default: "deep"
+        type: choice
+        options:
+          - recent
+          - deep
   push:
     branches: ["main"]
     paths-ignore:
       - "data/listings.json"
+      - "data/geocache.json"
   schedule:
-    - cron: "17 5,11,17,23 * * *"
+    - cron: "*/15 * * * *"
+    - cron: "7 0,6,12,18 * * *"
 
 permissions:
   contents: write
 
 concurrency:
   group: refresh-listings
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
+    env:
+      SCAN_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '7 0,6,12,18 * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,18 +45,18 @@ jobs:
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
 
-      - name: Buscar y filtrar viviendas
+      - name: Buscar, filtrar y revalidar viviendas
         run: npm run update:listings
 
-      - name: Guardar cambios
+      - name: Guardar datos
         shell: bash
         run: |
-          if git diff --quiet -- data/listings.json; then
+          if git diff --quiet -- data/listings.json data/geocache.json; then
             echo "Sin cambios"
             exit 0
           fi
           git config user.name "casas-catalunya-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/listings.json
-          git commit -m "data: actualizar viviendas"
+          git add data/listings.json data/geocache.json
+          git commit -m "data: actualizar viviendas [${SCAN_MODE}]"
           git push
