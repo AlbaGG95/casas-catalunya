@@ -10,5 +10,53 @@
   "torrelles-de-foix-barcelona": {
     "lat": 41.387735,
     "lon": 1.5723453
+  },
+  "c-manresa-barcelona": {
+    "lat": 41.9421905,
+    "lon": 2.2552346
+  },
+  "construccion-barcelona": {
+    "lat": 41.4093591,
+    "lon": 2.1976994
+  },
+  "el-casco-antiguo-tarragona": {
+    "lat": 41.1542896,
+    "lon": 1.1101376
+  },
+  "c-peguera-girona": {
+    "lat": 41.9638332,
+    "lon": 2.8338769
+  },
+  "carrer-dalia-girona": {
+    "lat": 41.8254067,
+    "lon": 2.8683045
+  },
+  "vilamorell-1-girona": {
+    "lat": 42.223273,
+    "lon": 2.9414992
+  },
+  "c-petunia-girona": {
+    "lat": 41.8300439,
+    "lon": 2.8687774
+  },
+  "vila-sacra-girona": {
+    "lat": 42.2668061,
+    "lon": 3.0170438
+  },
+  "riudarenes-girona": {
+    "lat": 41.8218536,
+    "lon": 2.7163817
+  },
+  "c-boiga-gran-lleida": {
+    "lat": 42.1661109,
+    "lon": 1.5695339
+  },
+  "cami-balena-3-lleida": {
+    "lat": 41.9085114,
+    "lon": 0.7619023
+  },
+  "la-floresta-lleida": {
+    "lat": 41.5103082,
+    "lon": 0.9195489
   }
 }
