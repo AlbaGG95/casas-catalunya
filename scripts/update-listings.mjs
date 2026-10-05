@@ -326,30 +326,69 @@ function extractM2(text,label,meta=""){
 function titleCaseSlug(s){
   return s.split("-").filter(Boolean).map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(" ");
 }
+function placeFromUrl(url,provider){
+  try{
+    const parts=new URL(url).pathname.split("/").filter(Boolean);
+    if(provider==="Habitaclia"){
+      const uuidIndex=parts.findIndex(x=>/^[0-9a-f]{8}-[0-9a-f-]{20,}$/i.test(x));
+      if(uuidIndex>1)return titleCaseSlug(parts[uuidIndex-1]);
+    }
+    if(provider==="Pisos.com"){
+      const i=parts.findIndex(x=>x==="comprar");
+      const slugPart=parts[i+1]||"";
+      let s=slugPart
+        .replace(/^(?:casa|chalet|vivienda)-/i,"")
+        .replace(/-\d{6,}_[0-9]+$/i,"")
+        .replace(/(?:_centro_urbano|_casco_urbano)$/i,"")
+        .replace(/\d{5}$/,"")
+        .replace(/_/g,"-");
+      return titleCaseSlug(s);
+    }
+    if(provider==="Fotocasa"){
+      const i=parts.findIndex(x=>x==="vivienda");
+      let s=parts[i+1]||"";
+      if(/^(obra-nueva|segunda-mano)$/i.test(s))s=parts[i+2]||"";
+      if(s && !/^(aire-acondicionado|parking|jardin|terraza|piscina)/i.test(s))return titleCaseSlug(s);
+    }
+    if(provider==="Servihabitat"){
+      const detail=parts.find((x,idx)=>idx>2&&/^(?:barcelona|girona|tarragona|lleida)-/i.test(x));
+      if(detail){
+        const province=detail.match(/^(barcelona|girona|tarragona|lleida)-/i)?.[1];
+        let tail=detail.replace(new RegExp("^"+province+"-","i"),"");
+        const bits=tail.split("-").filter(Boolean);
+        if(bits.length)return titleCaseSlug(bits.at(-1));
+      }
+    }
+  }catch{}
+  return "";
+}
+function plausiblePlace(s){
+  const v=clean(s);
+  if(v.length<2||v.length>80)return false;
+  if(/venta\s+en|construcci[oó]n|ambiente|descubre|espacio|blanco\s+para|carrer|calle|avenida|cam[ií]|lugar\s+vernet/i.test(v))return false;
+  if(/\d{3,}/.test(v))return false;
+  return /[a-záéíóúàèòçñ]/i.test(v);
+}
 function extractPlace(items,$,url,provider,meta,title){
   for(const x of items){
     const a=x.address||x.location?.address;
-    const p=a?.addressLocality;
-    if(p)return clean(p);
+    const p=clean(a?.addressLocality||"");
+    if(plausiblePlace(p))return p;
   }
-  const desc=clean(meta);
-  const dm=desc.match(/(?:venta\s+de\s+(?:casa|chalet).*?\s+en|casa.*?\s+en|chalet.*?\s+en)\s+([^.,]{2,60})/i);
-  if(dm)return clean(dm[1]);
+  const fromUrl=placeFromUrl(url,provider);
+  if(plausiblePlace(fromUrl))return fromUrl;
+
   const crumb=clean($('[aria-label*="breadcrumb" i],.breadcrumb,.breadcrumbs').text());
   if(crumb){
     const parts=crumb.split(/\s*[>›|]\s*/).filter(Boolean);
-    const candidate=parts.findLast?.(x=>x.length>2&&!/comprar|venta|casa|chalet/i.test(x));
+    const candidate=parts.findLast?.(x=>plausiblePlace(x)&&!/comprar|venta|casa|chalet/i.test(x));
     if(candidate)return clean(candidate);
   }
-  if(provider==="Habitaclia"){
-    try{
-      const parts=new URL(url).pathname.split("/").filter(Boolean);
-      const uuidIndex=parts.findIndex(x=>/^[0-9a-f]{8}-[0-9a-f-]{20,}$/i.test(x));
-      if(uuidIndex>1)return titleCaseSlug(parts[uuidIndex-1]);
-    }catch{}
-  }
+  const desc=clean(meta);
+  const dm=desc.match(/(?:venta\s+de\s+(?:casa|chalet).*?\s+en|casa.*?\s+en|chalet.*?\s+en)\s+([^.,]{2,60})/i);
+  if(dm&&plausiblePlace(dm[1]))return clean(dm[1]);
   const tm=clean(title).match(/\ben\s+([^,|]{2,60})/i);
-  return tm?clean(tm[1]):"";
+  return tm&&plausiblePlace(tm[1])?clean(tm[1]):"";
 }
 function extractProvince(items,fallback){
   for(const x of items){
