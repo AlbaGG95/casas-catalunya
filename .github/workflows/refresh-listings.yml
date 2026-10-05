@@ -20,10 +20,11 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
-  group: refresh-listings
-  cancel-in-progress: false
+  group: refresh-${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '2 * * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -33,13 +34,26 @@ jobs:
       SCAN_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '2 * * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - run: npm install --no-audit --no-fund
-      - name: Buscar y filtrar
+
+      - name: Buscar y filtrar viviendas
         run: npm run update:listings
-      - name: Guardar datos
+
+      - name: Sincronizar catálogo validado con Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/listings.json
+
+      - name: Guardar copia de respaldo en GitHub
         shell: bash
         run: |
           if git diff --quiet -- data/listings.json data/geocache.json; then exit 0; fi
