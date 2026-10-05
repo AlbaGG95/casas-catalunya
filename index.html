@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#173d29" />
+  <title>Casa Cataluña</title>
+  <meta name="description" content="Buscador familiar automatizado de casas en Cataluña." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">BÚSQUEDA FAMILIAR · CATALUÑA</p>
+        <h1>Casa Cataluña</h1>
+      </div>
+      <div class="header-meta">
+        <span id="updatedAt">Cargando última revisión…</span>
+        <span class="status-dot">Automático</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow light">FILTRO ESTRICTO</p>
+        <h2>Casas que sí merece la pena mirar</h2>
+        <p class="hero-copy">
+          Hasta 185.000 €, mínimo 3 habitaciones, jardín obligatorio y prioridad a casa independiente.
+          Se excluyen anuncios con señales de ocupación, inquilinos, nuda propiedad, subasta, proindiviso,
+          reformas importantes o situaciones similares.
+        </p>
+      </div>
+      <div class="hero-stats">
+        <article><strong id="visibleCount">0</strong><span>candidatas</span></article>
+        <article><strong id="newCount">0</strong><span>nuevas 7 días</span></article>
+        <article><strong id="freeCount">0</strong><span>libre confirmada</span></article>
+        <article><strong id="savedCount">0</strong><span>guardadas</span></article>
+      </div>
+    </section>
+
+    <section class="warning">
+      <strong>Importante sobre ocupación:</strong>
+      “Sin indicios de ocupación” significa que el anuncio no contiene señales problemáticas detectadas.
+      No equivale a entrega libre confirmada. La web lo muestra por separado para no dar una falsa seguridad.
+    </section>
+
+    <section class="controls" aria-label="Filtros">
+      <label>
+        <span>Buscar</span>
+        <input id="searchInput" type="search" placeholder="Localidad o título…" />
+      </label>
+      <label>
+        <span>Provincia</span>
+        <select id="provinceFilter">
+          <option value="">Toda Cataluña</option>
+          <option value="Barcelona">Barcelona</option>
+          <option value="Girona">Girona</option>
+          <option value="Tarragona">Tarragona</option>
+          <option value="Lleida">Lleida</option>
+        </select>
+      </label>
+      <label>
+        <span>Estado</span>
+        <select id="statusFilter">
+          <option value="">Todas</option>
+          <option value="new">Nuevas</option>
+          <option value="best">Mejor encaje</option>
+          <option value="free">Libre confirmada</option>
+          <option value="pending">Pendientes de verificar</option>
+        </select>
+      </label>
+      <label>
+        <span>Ordenar</span>
+        <select id="sortFilter">
+          <option value="score">Mejor encaje</option>
+          <option value="recent">Más recientes</option>
+          <option value="price-asc">Precio menor</option>
+          <option value="price-desc">Precio mayor</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="legend">
+      <span><i class="chip chip-new"></i> Nueva</span>
+      <span><i class="chip chip-fit"></i> Buen encaje</span>
+      <span><i class="chip chip-free"></i> Libre confirmada</span>
+      <span><i class="chip chip-pending"></i> Verificación pendiente</span>
+    </section>
+
+    <main id="listingGrid" class="grid" aria-live="polite"></main>
+    <div id="emptyState" class="empty-state" hidden>
+      No hay viviendas que coincidan con estos filtros.
+    </div>
+
+    <section class="method">
+      <div>
+        <p class="eyebrow">CÓMO DECIDE</p>
+        <h3>Reglas automáticas</h3>
+      </div>
+      <div class="method-grid">
+        <article><strong>Bloqueo duro</strong><p>Ocupada, sin posesión, inquilinos, nuda propiedad, subasta, proindiviso, no visitable o no hipotecable.</p></article>
+        <article><strong>Vivienda</strong><p>Máx. 185.000 €, 3+ habitaciones, jardín/parcela privada y tipología compatible con casa independiente.</p></article>
+        <article><strong>Estado</strong><p>Debe haber señales de buen estado, reformada, obra nueva o lista para entrar. Se rechaza reforma integral.</p></article>
+        <article><strong>Pendientes</strong><p>Fibra, cédula, cargas, entrega libre y urbanismo se mantienen visibles como verificaciones separadas.</p></article>
+      </div>
+    </section>
+
+    <footer>
+      Uso familiar. Los enlaces abren el anuncio original. Ninguna ficha sustituye nota simple, visita,
+      comprobación urbanística, cédula, suministros o aprobación hipotecaria.
+    </footer>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
