@@ -11,27 +11,40 @@ on:
         options: [recent, deep]
   push:
     branches: ["main"]
-    paths-ignore:
-      - "data/listings.json"
-      - "data/geocache.json"
+    paths:
+      - "scripts/**"
+      - ".github/workflows/refresh-listings.yml"
   schedule:
     - cron: "*/5 * * * *"
     - cron: "2 * * * *"
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
-concurrency:
-  group: refresh-${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '2 * * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
-  cancel-in-progress: true
-
 jobs:
-  refresh:
+  scan:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        provider: ["Habitaclia", "Pisos.com", "Indomio", "Fotocasa"]
+        province: ["Barcelona", "Tarragona", "Girona", "Lleida"]
+
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 18
+
+    concurrency:
+      group: casas-${{ matrix.provider }}-${{ matrix.province }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '2 * * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
+      cancel-in-progress: true
+
     env:
+      SCAN_PROVIDER: ${{ matrix.provider }}
+      SCAN_PROVINCE: ${{ matrix.province }}
       SCAN_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || github.event.schedule == '2 * * * *' && 'deep' || github.event_name == 'push' && 'deep' || 'recent' }}
+      INCREMENTAL_ONLY: "true"
+      OUTPUT_PATH: "data/shard.json"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -41,24 +54,17 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
-      - name: Buscar y filtrar viviendas
+      - name: Buscar y filtrar ${{ matrix.provider }} · ${{ matrix.province }}
         run: npm run update:listings
 
-      - name: Sincronizar catálogo validado con Supabase
+      - name: Sincronizar resultados validados con Supabase
         shell: bash
         run: |
           set -euo pipefail
+          test -f data/shard.json
           OIDC_JSON="$(curl -sSf             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
           OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
           test -n "$OIDC_TOKEN"
-          curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/listings.json
 
-      - name: Guardar copia de respaldo en GitHub
-        shell: bash
-        run: |
-          if git diff --quiet -- data/listings.json data/geocache.json; then exit 0; fi
-          git config user.name "casas-catalunya-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add data/listings.json data/geocache.json
-          git commit -m "data: actualizar viviendas [${SCAN_MODE}]"
-          git push
+          RESPONSE="$(curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
+          echo "$RESPONSE"
