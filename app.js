@@ -89,9 +89,14 @@ function render(){
   els.empty.hidden=!!a.length;
 
   const all=(payload.listings||[]).filter(candidate);
-  els.visible.textContent=a.length;
-  els.newCount.textContent=all.filter(recent).length;
-  els.under180.textContent=all.filter(h=>h.price<=180000).length;
+  const bootstrapping=all.length===0 && Object.keys(payload.sourceStatus||{}).length===0;
+  els.visible.textContent=bootstrapping?"—":a.length;
+  els.newCount.textContent=bootstrapping?"—":all.filter(recent).length;
+  els.under180.textContent=bootstrapping?"—":all.filter(h=>h.price<=180000).length;
+  if(bootstrapping){
+    els.empty.hidden=false;
+    els.empty.textContent="Sincronizando el catálogo seguro por primera vez. Las viviendas aparecerán aquí en cuanto cada fuente termine su primer escaneo.";
+  }
   els.savedCount.textContent=saved.size;
   els.updatedAt.textContent="Datos "+fmt(payload.generatedAt);
   els.lastScan.textContent=fmt(payload.generatedAt);
