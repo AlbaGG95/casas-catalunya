@@ -125,11 +125,24 @@ function extractBedrooms(text,items){
   const m=text.match(/(\d{1,2})\s*(?:hab\.?|habitaciones?|dormitorios?)/i);
   return m?Number(m[1]):null;
 }
-function extractM2(text,label){
-  const rx=label==="plot"
-    ?/(?:parcela|terreno)[^0-9]{0,35}(\d{2,5}(?:[.,]\d+)?)\s*m(?:²|2)/i
-    :/(\d{2,4}(?:[.,]\d+)?)\s*m(?:²|2)\s*(?:construidos?|de\s+vivienda|útiles|utiles)?/i;
-  const m=text.match(rx);return m?Math.round(Number(m[1].replace(".","").replace(",","."))):null;
+function toM2(raw,max=10000){
+  if(!raw)return null;
+  const n=Math.round(Number(String(raw).replace(/\./g,"").replace(",",".")));
+  return Number.isFinite(n)&&n>=20&&n<=max?n:null;
+}
+function extractM2(text,label,metaDescription=""){
+  if(label==="house"){
+    // Los portales suelen poner primero los m² reales de vivienda en la meta descripción.
+    const md=clean(metaDescription);
+    const mm=md.match(/(?:^|[.,;:]\s*|\s)(\d{2,4}(?:[.,]\d+)?)\s*m(?:²|2)(?:\b|,)/i);
+    const fromMeta=toM2(mm?.[1],1000);
+    if(fromMeta)return fromMeta;
+    const candidates=[...text.matchAll(/(\d{2,4}(?:[.,]\d+)?)\s*m(?:²|2)\s*(?:construidos?|de\s+vivienda|útiles|utiles)?/gi)]
+      .map(m=>toM2(m[1],1000)).filter(Boolean);
+    return candidates.length?Math.min(...candidates):null;
+  }
+  const m=text.match(/(?:parcela|terreno)[^0-9]{0,40}(\d{2,5}(?:[.,]\d+)?)\s*m(?:²|2)/i);
+  return toM2(m?.[1],20000);
 }
 function extractPlace(items,$,fallbackProvince){
   for(const x of items){
@@ -228,8 +241,9 @@ function parseDetail(provider,province,url,html){
 
   const place=extractPlace(items,$,province);
   const finalProvince=extractProvince(items,province);
-  const plotM2=extractM2(text,"plot");
-  const houseM2=extractM2(text,"house");
+  const metaDescription=clean($('meta[name="description"]').attr("content"));
+  const plotM2=extractM2(text,"plot",metaDescription);
+  const houseM2=extractM2(text,"house",metaDescription);
   const independent=POSITIVE.independent.test(text);
   const conditionOk=POSITIVE.condition.test(text);
   const fiber=POSITIVE.fiber.test(text);
@@ -238,7 +252,7 @@ function parseDetail(provider,province,url,html){
   const listing={
     id:idFor(provider,url,title,place),
     provider,title:title||"Casa detectada",place,province:finalProvince,price,bedrooms,plotM2,houseM2,
-    url,summary:clean($('meta[name="description"]').attr("content"))?.slice(0,360)||summarize(title,place,price,bedrooms,plotM2),
+    url,summary:metaDescription?.slice(0,360)||summarize(title,place,price,bedrooms,plotM2),
     active:true,occupancyStatus:occupancy(text),
     independentStatus:independent?"confirmed":"pending",
     conditionStatus:conditionOk?"confirmed":"pending",
