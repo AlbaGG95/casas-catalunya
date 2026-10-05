@@ -27,27 +27,41 @@ const PROVINCES=[
 
 function sourceDefinitions(){
   const out=[];
-  // Interleave provinces so one large province can never consume the full scan.
   for(const p of PROVINCES){
     out.push({
       provider:"Fotocasa",province:p.name,kind:"recent",
       base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3`,
-      pages:1,maxDetails:MODE==="deep"?70:45
-    });
-    out.push({
-      provider:"Indomio",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.indomio.es/venta-casas/${p.slug}-provincia/con-jardin/`,
-      pages:MODE==="deep"?10:2,maxDetails:MODE==="deep"?120:45
+      pages:1,maxDetails:MODE==="deep"?80:50
     });
     out.push({
       provider:"Habitaclia",province:p.name,kind:MODE==="recent"?"recentish":"deep",
       base:`https://www.habitaclia.com/comprar/chalets/${p.slug}-provincia/baratos/s`,
-      pages:MODE==="deep"?8:2,maxDetails:MODE==="deep"?110:45
+      pages:MODE==="deep"?12:3,maxDetails:MODE==="deep"?160:55
     });
     out.push({
       provider:"Pisos.com",province:p.name,kind:MODE==="recent"?"recentish":"deep",
       base:`https://www.pisos.com/venta/casas-${p.slug}/con-3-habitaciones/hasta-185000/`,
-      pages:MODE==="deep"?8:2,maxDetails:MODE==="deep"?100:40
+      pages:MODE==="deep"?12:3,maxDetails:MODE==="deep"?150:55
+    });
+    out.push({
+      provider:"Yaencontre",province:p.name,kind:MODE==="recent"?"recentish":"deep",
+      base:`https://www.yaencontre.com/venta/casas/${p.slug}-provincia/t-chalets/e-baratos`,
+      pages:1,maxDetails:MODE==="deep"?120:55
+    });
+    out.push({
+      provider:"Servihabitat",province:p.name,kind:MODE==="recent"?"recentish":"deep",
+      base:`https://www.servihabitat.com/es/venta/vivienda/${p.slug}`,
+      pages:1,maxDetails:MODE==="deep"?120:50
+    });
+    out.push({
+      provider:"Idealista",province:p.name,kind:MODE==="recent"?"recentish":"deep",
+      base:`https://www.idealista.com/venta-viviendas/${p.slug}-provincia/con-chalets-independientes,precio-hasta_185000/`,
+      pages:MODE==="deep"?6:2,maxDetails:MODE==="deep"?120:50
+    });
+    out.push({
+      provider:"Indomio",province:p.name,kind:MODE==="recent"?"recentish":"deep",
+      base:`https://www.indomio.es/venta-casas/${p.slug}-provincia/con-jardin/`,
+      pages:MODE==="deep"?6:1,maxDetails:MODE==="deep"?80:35
     });
   }
   return out.filter(src =>
@@ -143,12 +157,21 @@ function pageUrl(src,page){
   if(page<=1)return src.base;
   if(src.provider==="Habitaclia")return src.base.replace(/\/$/,"")+"/"+page;
   if(src.provider==="Pisos.com")return src.base.replace(/\/$/,"")+"/"+page+"/";
+  if(src.provider==="Idealista"){
+    const u=new URL(src.base);
+    const path=u.pathname.replace(/\/$/,"");
+    u.pathname=path+"/pagina-"+page+".htm";
+    return u.toString();
+  }
   return src.base;
 }
 function isDetail(provider,url){
   if(provider==="Fotocasa")return /\/es\/comprar\/vivienda\//i.test(url);
   if(provider==="Habitaclia")return /\/comprar\/(?:vivienda|casa|chalet)\//i.test(url)&&/\/d(?:\?|$)/i.test(url);
   if(provider==="Pisos.com")return /\/comprar\//i.test(url)&&!/\/venta\//i.test(url);
+  if(provider==="Yaencontre")return /\/venta\/casa\/inmueble-\d+-\d+/i.test(url);
+  if(provider==="Servihabitat")return /\/es\/venta\/vivienda-casa\/.+\/\d+\/?$/i.test(url);
+  if(provider==="Idealista")return /\/inmueble\/\d+\/?/i.test(url);
   return false;
 }
 function cardTextFor($,a){
@@ -184,6 +207,12 @@ function discover(src,base,html){
     ? [/https?:\\?\/\\?\/www\.habitaclia\.com\\?\/comprar\\?\/(?:vivienda|casa|chalet)\\?\/[^"'<>\s]+?\\?\/d/gi,/\/comprar\/(?:vivienda|casa|chalet)\/[^"'<>\s]+?\/d/gi]
     : src.provider==="Indomio"
     ? [/https?:\\?\/\\?\/www\.indomio\.es\\?\/anuncios\\?\/\d+\\?\/?/gi,/\/anuncios\/\d+\/?/gi]
+    : src.provider==="Yaencontre"
+    ? [/https?:\\?\/\\?\/www\.yaencontre\.com\\?\/venta\\?\/casa\\?\/inmueble-\d+-\d+/gi,/\/venta\/casa\/inmueble-\d+-\d+/gi]
+    : src.provider==="Servihabitat"
+    ? [/https?:\\?\/\\?\/www\.servihabitat\.com\\?\/es\\?\/venta\\?\/vivienda-casa\\?\/[^"'<>\s]+\\?\/\d+/gi,/\/es\/venta\/vivienda-casa\/[^"'<>\s]+\/\d+/gi]
+    : src.provider==="Idealista"
+    ? [/https?:\\?\/\\?\/(?:www\.)?idealista\.com\\?\/inmueble\\?\/\d+\\?\/?/gi,/\/inmueble\/\d+\/?/gi]
     : [/https?:\\?\/\\?\/www\.pisos\.com\\?\/comprar\\?\/[^"'<>\s]+/gi,/\/comprar\/[^"'<>\s]+/gi];
   for(const rx of patterns){
     for(const m of html.matchAll(rx)){
@@ -415,7 +444,7 @@ function scoreOf(x,text){
   let s=28;
   if(x.price<=SOFT_PRICE)s+=12;else s+=4;
   if(x.bedrooms>=4)s+=7;else s+=4;
-  if(x.independentStatus==="confirmed")s+=16;else s+=5;
+  if(x.independentStatus==="confirmed")s+=16;else if(x.independentStatus==="probable")s+=11;else s+=5;
   if(x.conditionStatus==="confirmed")s+=13;
   if(x.occupancyStatus==="confirmed_free")s+=6;else s+=2;
   if(x.registryStatus==="claimed_clear")s+=4;
@@ -479,7 +508,7 @@ function parseDetail(src,url,html,now){
   const conditionBlock=badConditionReason(text);if(conditionBlock)return {reject:conditionBlock};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
   if(!POSITIVE.garden.test(text))return {reject:"sin jardín/parcela detectada"};
-  const conditionPositive=POSITIVE.condition.test(text);
+  const conditionPositive=POSITIVE.condition.test(text) || /estado\s*:\s*bien|en\s+buen\s+estado|a\s+estrenar/i.test(text);
 
   const title=clean($("h1").first().text()||$('meta[property="og:title"]').attr("content")||$("title").text()).slice(0,180);
   if(/(?:casa|finca|mas[ií]a)\s+r[uú]stica/i.test(title))return {reject:"rústica"};
@@ -504,7 +533,7 @@ function parseDetail(src,url,html,now){
     occupancyStatus:POSITIVE.free.test(text)?"confirmed_free":"no_signals",
     financingStatus:"no_restrictions_detected",
     registryStatus:POSITIVE.clearCharges.test(text)?"claimed_clear":"pending",
-    independentStatus:POSITIVE.independent.test(text)?"confirmed":"pending",
+    independentStatus:POSITIVE.independent.test(text)?"confirmed":(/\bchalet\b/i.test(title)&&!/adosad|paread|medianer/i.test(text)?"probable":"pending"),
     conditionStatus:conditionPositive?"confirmed":"pending",
     fiberStatus:POSITIVE.fiber.test(text)?"confirmed":"pending",
     servicesStatus:POSITIVE.services.test(text)?"confirmed":"pending",
