@@ -54,9 +54,27 @@ jobs:
       - name: Ejecutar regresiones de seguridad
         run: npm test
 
+  reclassify:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reprocesar catálogo activo con SafetyEngine v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          RESPONSE="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/reclassify-safety"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data '{}')"
+          echo "$RESPONSE"
+          echo "$RESPONSE" | jq -e '.ok == true'
+          echo "$RESPONSE" | jq -e '.processed >= 1'
+
   scan:
     if: github.event_name != 'pull_request'
-    needs: test
+    needs: [test, reclassify]
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -108,7 +126,7 @@ jobs:
 
   services:
     if: always() && github.event_name != 'pull_request'
-    needs: [test, scan]
+    needs: [test, reclassify, scan]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
