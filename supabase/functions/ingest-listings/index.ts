@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
 import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { nextSourceHealthState } from "./source-health.mjs";
 
 const ALLOWED_REPO = "AlbaGG95/casas-catalunya";
 const ALLOWED_REF = "refs/heads/main";
@@ -132,63 +133,9 @@ Deno.serve(async (req) => {
     for (const provider of providers) {
       const s = sourceSummary.get(provider) || { pages:0,discovered:0,accepted:0,rejected:0,priceConflicts:0,ok:true,errors:[] };
       const prev:any = priorHealthMap.get(provider) || {};
-      const nowMs = new Date(generatedAt).getTime();
-      const previousFailures = Number(prev.consecutive_failures || 0);
-      let failures = s.ok ? 0 : previousFailures + 1;
-      const conflictRate = s.discovered > 0 ? s.priceConflicts / s.discovered : 0;
-      const priceKill = s.priceConflicts >= 3 || (s.discovered >= 10 && conflictRate >= 0.20);
-      const failureKill = failures >= 3;
-      const wasDisabled = prev.ingestion_enabled === false || prev.status === "quarantined";
-      const cooldownMs = prev.cooldown_until ? new Date(prev.cooldown_until).getTime() : 0;
-      const cooldownExpired = !cooldownMs || nowMs >= cooldownMs;
-      const healthyProbe = s.ok === true && Number(s.pages || 0) > 0;
-      const canRecover = wasDisabled && cooldownExpired && healthyProbe && !priceKill;
-
-      let autoDisabled = false;
-      let recovered = false;
-      let reason:string|null = null;
-      let cooldownUntil:any = prev.cooldown_until || null;
-
-      if (canRecover) {
-        recovered = true;
-        failures = 0;
-        autoDisabled = false;
-        cooldownUntil = null;
-      } else if (wasDisabled) {
-        autoDisabled = true;
-        reason = prev.quarantine_reason || "previous_quarantine";
-        if (cooldownExpired && !healthyProbe) {
-          cooldownUntil = new Date(nowMs + 60 * 60 * 1000).toISOString();
-        }
-      } else if (priceKill || failureKill) {
-        autoDisabled = true;
-        reason = priceKill
-          ? `price_conflicts:${s.priceConflicts}/${s.discovered}`
-          : `consecutive_failures:${failures}`;
-        cooldownUntil = new Date(nowMs + 30 * 60 * 1000).toISOString();
-      }
-
-      if (autoDisabled) disabledProviders.add(provider);
-
-      healthRows.push({
-        provider,
-        last_run_at: generatedAt,
-        last_success_at: s.ok ? generatedAt : (prev.last_success_at || null),
-        status: autoDisabled ? "quarantined" : (s.ok ? "ok" : (s.pages > 0 ? "degraded" : "down")),
-        discovered_count: s.discovered,
-        accepted_count: s.accepted,
-        rejected_count: s.rejected,
-        error_message: s.errors.length ? s.errors.join("; ").slice(0, 500) : null,
-        ingestion_enabled: !autoDisabled,
-        conflict_count: Number(prev.conflict_count || 0) + Number(s.priceConflicts || 0),
-        consecutive_failures: failures,
-        auto_disabled_at: autoDisabled ? (prev.auto_disabled_at || generatedAt) : null,
-        quarantine_reason: autoDisabled ? reason : null,
-        last_conflict_at: s.priceConflicts > 0 ? generatedAt : (prev.last_conflict_at || null),
-        cooldown_until: cooldownUntil,
-        last_recovered_at: recovered ? generatedAt : (prev.last_recovered_at || null),
-        recovery_count: Number(prev.recovery_count || 0) + (recovered ? 1 : 0),
-      });
+      const state = nextSourceHealthState(provider,s,prev,generatedAt);
+      if (state.disabled) disabledProviders.add(provider);
+      healthRows.push(state.row);
     }
 
     if (healthRows.length) {
