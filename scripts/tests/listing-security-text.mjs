@@ -50,6 +50,8 @@ const reclassify=fs.readFileSync("supabase/functions/reclassify-safety/index.ts"
 const migration=fs.readFileSync("supabase/migrations/20261006134500_step3_listing_security_text.sql","utf8");
 const app=fs.readFileSync("app.js","utf8");
 const property=fs.readFileSync("property.js","utf8");
+const updater=fs.readFileSync("scripts/update-listings.mjs","utf8");
+const publicData=fs.readFileSync("data/listings.json","utf8");
 
 assert.match(ingest,/listing_security_text/);
 assert.match(ingest,/securityText/);
@@ -60,5 +62,8 @@ assert.match(migration,/revoke all on table public\.listing_security_text from p
 assert.match(migration,/grant select, insert, update, delete on table public\.listing_security_text to service_role/i);
 assert.doesNotMatch(app,/listing_security_text|securityText/);
 assert.doesNotMatch(property,/listing_security_text|securityText/);
+assert.doesNotMatch(publicData,/"securityText"\s*:/);
+assert.match(updater,/listings:listings\.map\(stripPrivateListingFields\)/);
+assert.match(ingest,/raw_payload:\s*publicRawPayload\(l\)/);
 
 console.log("Private listing security text contract: OK");
