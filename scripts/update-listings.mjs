@@ -5,7 +5,7 @@ import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
 import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
 import {evaluateSafetyText,evaluateSafetyDocument,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
-import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
+import {isDetailUrl,embeddedDetailPatterns,canonicalListingUrl} from "./lib/provider-adapters.mjs";
 import {buildSourceDefinitions,sourceDefinitionKey} from "./lib/source-catalog.mjs";
 import {allJsonLd,extractListingSecurityText,relevantText,stripPrivateListingFields} from "./lib/listing-security-text.mjs";
 
@@ -72,14 +72,7 @@ async function fetchHtml(url){
 function abs(base,href){
   try{
     const u=new URL(href.replace(/\\u002F/g,"/").replace(/\\\//g,"/"),base);
-    u.hash="";
-    // Normalize detail URLs so tracking parameters do not create duplicate properties.
-    if(/fotocasa\.es|habitaclia\.com|pisos\.com|yaencontre\.com|servihabitat\.com|idealista\.com|indomio\.es/i.test(u.hostname)){
-      for(const key of [...u.searchParams.keys()]){
-        if(/^(from|utm_|source|campaign|medium|ref)/i.test(key))u.searchParams.delete(key);
-      }
-    }
-    return u.toString();
+    return canonicalListingUrl(u.toString());
   }catch{return null}
 }
 function pageUrl(src,page){
@@ -345,7 +338,7 @@ function confidenceOf(x){
 
 function scoreBreakdownOf(x,text){
   const parts=[{key:"base",label:"Base de encaje",points:28}];
-  parts.push({key:"budget",label:x.price<=PREFERRED_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–190k",points:x.price<=PREFERRED_PRICE?12:4});
+  parts.push({key:"budget",label:x.price<=PREFERRED_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–195k",points:x.price<=PREFERRED_PRICE?12:4});
   parts.push({key:"bedrooms",label:x.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:x.bedrooms>=4?7:4});
   parts.push({
     key:"independent",
@@ -666,7 +659,7 @@ async function main(){
     ? {generatedAt:null,listings:[],sourceStatus:{}}
     : await readJson(DATA_PATH,{generatedAt:null,listings:[],sourceStatus:{}});
   const geocache=await readJson(GEO_PATH,{});
-  const byUrl=new Map((prior.listings||[]).map(x=>[x.url,x]));
+  const byUrl=new Map((prior.listings||[]).map(x=>[canonicalListingUrl(x.url),{...x,url:canonicalListingUrl(x.url)}]));
   const found=new Map();
   const sourceStatus={};
   const rejectionTotals={};
@@ -686,7 +679,7 @@ async function main(){
         status.discovered+=candidates.length;
         for(const c of candidates){
           if(detailBudget<=0||sourceBudget<=0)break;
-          if(found.has(c.url)){continue}
+          if(found.has(canonicalListingUrl(c.url))){continue}
           detailBudget--;sourceBudget--;status.checked++;
           try{
             const detail=await fetchHtml(c.url);
@@ -706,7 +699,7 @@ async function main(){
                   const _$=cheerio.load(detail),_items=allJsonLd(_$);
                   listing.score=scoreOf(listing,relevantText(_$,_items));
                 }
-                found.set(c.url,mergeListing(byUrl.get(c.url),listing,now));
+                found.set(canonicalListingUrl(c.url),mergeListing(byUrl.get(canonicalListingUrl(c.url)),listing,now));
                 status.accepted++;
               }
             }
@@ -722,7 +715,7 @@ async function main(){
   }
 
   const revalidate=INCREMENTAL_ONLY ? [] : (prior.listings||[])
-    .filter(x=>x.active!==false&&!found.has(x.url))
+    .filter(x=>x.active!==false&&!found.has(canonicalListingUrl(x.url)))
     .sort((a,b)=>new Date(a.lastChecked||a.lastSeen||0)-new Date(b.lastChecked||b.lastSeen||0))
     .slice(0,MAX_REVALIDATE);
 
@@ -731,40 +724,40 @@ async function main(){
       const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),securityText=extractListingSecurityText($,items),text=securityText.safetyText;
       const safety=evaluateSafetyDocument(securityText);
       if(isUnavailable(text)||safety.decision===SAFETY_DECISIONS.REJECT){
-        found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":"safety:"+safety.code});
+        found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":"safety:"+safety.code});
       }else{
         const src={provider:old.provider,province:old.province,kind:old.discoveredVia||"deep"};
         const parsed=parseDetail(src,old.url,html,now);
         if(parsed.listing){
           let listing=await enrichTravel(parsed.listing,geocache);
-          if(listing.travelStatus==="too_far")found.set(old.url,{...old,active:false,lastChecked:now,removalReason:"más de 1h30"});
+          if(listing.travelStatus==="too_far")found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:"más de 1h30"});
           else{
             listing.score=scoreOf(listing,text);
             listing.evidence={...(listing.evidence||{}),scoreBreakdown:scoreBreakdownOf(listing,text)};
             const confidence=confidenceOf(listing);
             listing.confidenceScore=confidence.score;
             listing.dataConfidence=confidence.level;
-            found.set(old.url,mergeListing(old,listing,now));
+            found.set(canonicalListingUrl(old.url),mergeListing(old,listing,now));
           }
         }else{
-          found.set(old.url,{...old,active:false,lastChecked:now,removalReason:parsed.reject||"ya no cumple"});
+          found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:parsed.reject||"ya no cumple"});
         }
       }
     }catch{
-      found.set(old.url,{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
+      found.set(canonicalListingUrl(old.url),{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
     }
     await wait(120);
   }
 
-  const revalidatedUrls=new Set(revalidate.map(x=>x.url));
+  const revalidatedUrls=new Set(revalidate.map(x=>canonicalListingUrl(x.url)));
   for(const old of (INCREMENTAL_ONLY ? [] : (prior.listings||[]))){
-    if(found.has(old.url))continue;
+    if(found.has(canonicalListingUrl(old.url)))continue;
     const lastOk=new Date(old.lastSeen||old.firstSeen||0);
     const ageDays=(new Date(now)-lastOk)/86400000;
     if(ageDays>21){
-      found.set(old.url,{...old,active:false,removalReason:"sin revalidar >21 días"});
+      found.set(canonicalListingUrl(old.url),{...old,active:false,removalReason:"sin revalidar >21 días"});
     }else{
-      found.set(old.url,{...old,missedRuns:(old.missedRuns||0)+(revalidatedUrls.has(old.url)?0:1)});
+      found.set(canonicalListingUrl(old.url),{...old,missedRuns:(old.missedRuns||0)+(revalidatedUrls.has(canonicalListingUrl(old.url))?0:1)});
     }
   }
 
