@@ -29,11 +29,23 @@ function nullableNumber(v: any) {
   return Number.isFinite(n) ? n : null;
 }
 
+function securityTextOf(l: any) {
+  const value = l?.securityText?.safetyText;
+  if (typeof value === "string" && value.trim()) return value.slice(0, 48000);
+  return `${l?.title ?? ""} ${l?.summary ?? ""}`.trim();
+}
+
+function publicRawPayload(l: any) {
+  if (!l || typeof l !== "object") return l;
+  const { securityText, ...safePayload } = l;
+  return safePayload;
+}
+
 function hardReasons(l: any) {
   const reasons: string[] = [];
   const price = Number(l?.price);
   const beds = Number(l?.bedrooms);
-  const text = `${l?.title ?? ""} ${l?.summary ?? ""}`;
+  const text = securityTextOf(l);
   if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) reasons.push("price");
   if (!Number.isInteger(beds) || beds < MIN_BEDROOMS || beds > 20) reasons.push("bedrooms");
   if (!["Barcelona","Girona","Tarragona","Lleida"].includes(l?.province)) reasons.push("province");
@@ -166,7 +178,7 @@ Deno.serve(async (req) => {
           evidence: "edge_hard_validation",
           raw_price: Number.isFinite(Number(l?.price)) ? Number(l.price) : null,
           raw_bedrooms: Number.isFinite(Number(l?.bedrooms)) ? Number(l.bedrooms) : null,
-          raw_payload: l ?? {},
+          raw_payload: publicRawPayload(l) ?? {},
         });
         continue;
       }
@@ -303,10 +315,47 @@ Deno.serve(async (req) => {
         }
       }));
 
+    const sourceMap = new Map<string, any>();
     if (sourceRows.length) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("listing_sources")
-        .upsert(sourceRows, { onConflict: "canonical_url" });
+        .upsert(sourceRows, { onConflict: "canonical_url" })
+        .select("id,property_id,canonical_url");
+      if (error) throw error;
+      for (const row of data || []) sourceMap.set(row.canonical_url, row);
+    }
+
+    const securityRows = persistable
+      .filter((l:any) => {
+        const doc = l?.securityText;
+        return l?.url && doc && typeof doc.safetyText === "string" &&
+          doc.safetyText.trim() && /^[0-9a-f]{64}$/.test(String(doc.contentHash || ""));
+      })
+      .map((l:any) => {
+        const canonicalUrl = normalizeUrl(l.url);
+        const source = sourceMap.get(canonicalUrl);
+        return {
+          property_id: propertyMap.get(String(l.id)),
+          listing_source_id: source?.id || null,
+          canonical_url: canonicalUrl,
+          provider: l.provider || "unknown",
+          title_text: String(l.securityText.title || "").slice(0, 300) || null,
+          meta_description: String(l.securityText.metaDescription || "").slice(0, 4000) || null,
+          structured_text: String(l.securityText.structuredText || "").slice(0, 12000) || null,
+          body_text: String(l.securityText.bodyText || "").slice(0, 30000) || null,
+          safety_text: String(l.securityText.safetyText || "").slice(0, 48000),
+          content_hash: String(l.securityText.contentHash),
+          extractor_version: Number(l.securityText.version) || 1,
+          captured_at: l.securityText.capturedAt || l.lastChecked || generatedAt,
+          updated_at: generatedAt
+        };
+      })
+      .filter((row:any) => row.property_id);
+
+    if (securityRows.length) {
+      const { error } = await supabase
+        .from("listing_security_text")
+        .upsert(securityRows, { onConflict: "canonical_url" });
       if (error) throw error;
     }
 
@@ -398,6 +447,7 @@ Deno.serve(async (req) => {
       accepted: candidates.length,
       quarantined: quarantine.length,
       rejected: rejected.length,
+      securityTextStored: securityRows.length,
       withdrawn: inactiveFingerprints.length,
       disabledProviders: [...disabledProviders],
       generatedAt,
