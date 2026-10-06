@@ -13,6 +13,8 @@ const SCAN_PROVIDER=(process.env.SCAN_PROVIDER||"").trim();
 const SCAN_PROVINCE=(process.env.SCAN_PROVINCE||"").trim();
 const INCREMENTAL_ONLY=(process.env.INCREMENTAL_ONLY||"false")==="true";
 const OUTPUT_PATH=process.env.OUTPUT_PATH||"data/listings.json";
+const PIPELINE_PHASE=(process.env.PIPELINE_PHASE||"legacy").trim().toLowerCase();
+const PLAN_PATH=process.env.PLAN_PATH||"data/plan.json";
 const SOFT_PRICE=180000;
 const ORIGIN={lat:41.4247,lon:2.1647,label:"08032 Barcelona"};
 const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://github.com/AlbaGG95/casas-catalunya)";
@@ -601,7 +603,143 @@ function isUnavailable(text){
   return /anuncio\s+(?:ya\s+)?no\s+disponible|inmueble\s+(?:ya\s+)?no\s+disponible|anuncio\s+retirado|inmueble\s+retirado|\breservad[ao]\b|vendid[ao]/i.test(text);
 }
 
+async function runDiscoveryPhase(){
+  const now=new Date().toISOString();
+  const sourceStatus={};
+  const discoveries=[];
+  const globalSeen=new Set();
+
+  for(const src of sourceDefinitions()){
+    const status={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};
+    try{
+      for(let page=1;page<=src.pages;page++){
+        const url=pageUrl(src,page);
+        let html;
+        try{html=await fetchHtml(url)}catch(e){if(page===1)throw e;break}
+        status.pages++;
+        const candidates=discover(src,url,html);
+        status.discovered+=candidates.length;
+        for(const candidate of candidates){
+          if(globalSeen.has(candidate.url))continue;
+          globalSeen.add(candidate.url);
+          discoveries.push({
+            provider:src.provider,
+            province:src.province,
+            kind:src.kind,
+            url:candidate.url,
+            listText:candidate.listText||""
+          });
+        }
+        await wait(180);
+      }
+    }catch(e){
+      status.ok=false;
+      status.error=e instanceof Error?e.message:String(e);
+    }
+    sourceStatus[sourceKey(src)]=status;
+  }
+
+  const out={generatedAt:now,scanMode:MODE,sourceStatus,discoveries};
+  await fs.mkdir(new URL("../data/",import.meta.url),{recursive:true});
+  await fs.writeFile(OUTPUT_PATH,JSON.stringify(out,null,2)+"\n");
+  console.log(JSON.stringify({phase:"discover",mode:MODE,discovered:discoveries.length,sources:Object.keys(sourceStatus).length},null,2));
+}
+
+async function runClassificationPhase(){
+  const now=new Date().toISOString();
+  const plan=await readJson(PLAN_PATH,{generatedAt:now,scanMode:MODE,sourceStatus:{},items:[]});
+  const geocache=await readJson(GEO_PATH,{});
+  const sourceStatus=JSON.parse(JSON.stringify(plan.sourceStatus||{}));
+  const rejectionTotals={};
+  const listings=[];
+  const pipelineResults=[];
+  const items=Array.isArray(plan.items)?plan.items.slice(0,MAX_DETAILS):[];
+
+  const getStatus=src=>{
+    const key=sourceKey(src);
+    if(!sourceStatus[key])sourceStatus[key]={ok:true,pages:0,discovered:0,checked:0,accepted:0,rejected:{}};
+    sourceStatus[key].checked=Number(sourceStatus[key].checked||0);
+    sourceStatus[key].accepted=Number(sourceStatus[key].accepted||0);
+    sourceStatus[key].rejected=sourceStatus[key].rejected||{};
+    return sourceStatus[key];
+  };
+
+  for(const item of items){
+    const src={
+      provider:String(item.provider||SCAN_PROVIDER||""),
+      province:String(item.province||SCAN_PROVINCE||""),
+      kind:String(item.kind||MODE)
+    };
+    const status=getStatus(src);
+    status.checked++;
+
+    try{
+      const detail=await fetchHtml(item.url);
+      const parsed=parseDetail(src,item.url,detail,now);
+      if(!parsed.listing){
+        const reason=parsed.reject||"descartada";
+        status.rejected[reason]=(status.rejected[reason]||0)+1;
+        rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
+        pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+      }else{
+        let listing=await enrichTravel(parsed.listing,geocache);
+        if(listing.travelStatus==="too_far"){
+          const reason="más de 1h30";
+          status.rejected[reason]=(status.rejected[reason]||0)+1;
+          rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
+          pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+        }else{
+          const _$=cheerio.load(detail),_items=allJsonLd(_$);
+          const detailText=relevantText(_$,_items);
+          listing.score=scoreOf(listing,detailText);
+          listing.evidence={...(listing.evidence||{}),scoreBreakdown:scoreBreakdownOf(listing,detailText)};
+          const confidence=confidenceOf(listing);
+          listing.confidenceScore=confidence.score;
+          listing.dataConfidence=confidence.level;
+          listings.push(mergeListing(null,listing,now));
+          status.accepted++;
+          pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"accepted"});
+        }
+      }
+    }catch(e){
+      const reason=e instanceof Error?e.message:"error detalle";
+      status.rejected["error detalle"]=(status.rejected["error detalle"]||0)+1;
+      pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"error",reason});
+    }
+    await wait(120);
+  }
+
+  const out={
+    generatedAt:now,
+    scanMode:MODE,
+    pipelinePhase:"classify",
+    rules:{
+      preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
+      gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
+      condition:"ready_to_live",origin:ORIGIN.label
+    },
+    stats:{
+      active:listings.length,
+      recent:listings.filter(x=>x.freshnessStatus==="recent").length,
+      under180:listings.filter(x=>x.price<=SOFT_PRICE).length,
+      stretch:listings.filter(x=>x.price>SOFT_PRICE).length,
+      checkedDetails:items.length,
+      rejectionTotals
+    },
+    sourceStatus,
+    pipelineResults,
+    listings
+  };
+
+  await fs.mkdir(new URL("../data/",import.meta.url),{recursive:true});
+  await fs.writeFile(OUTPUT_PATH,JSON.stringify(out,null,2)+"\n");
+  console.log(JSON.stringify({phase:"classify",mode:MODE,planned:items.length,accepted:listings.length,rejected:pipelineResults.filter(x=>x.outcome==="rejected").length,errors:pipelineResults.filter(x=>x.outcome==="error").length},null,2));
+}
+
 async function main(){
+  if(PIPELINE_PHASE==="discover")return runDiscoveryPhase();
+  if(PIPELINE_PHASE==="classify")return runClassificationPhase();
+
   const now=new Date().toISOString();
   const prior=INCREMENTAL_ONLY
     ? {generatedAt:null,listings:[],sourceStatus:{}}
