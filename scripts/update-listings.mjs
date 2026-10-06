@@ -612,19 +612,28 @@ async function runClassificationPhase(){
 
     try{
       const detail=await fetchHtml(item.url);
+      const quickText=clean(cheerio.load(detail)("body").text()).slice(0,20000);
+      if(item.revalidation&&isUnavailable(quickText)){
+        const reason="unavailable";
+        status.rejected[reason]=(status.rejected[reason]||0)+1;
+        rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
+        pipelineResults.push({propertyId:item.propertyId||null,revalidation:true,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+        await wait(120);
+        continue;
+      }
       const parsed=parseDetail(src,item.url,detail,now);
       if(!parsed.listing){
         const reason=parsed.reject||"descartada";
         status.rejected[reason]=(status.rejected[reason]||0)+1;
         rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
-        pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+        pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
       }else{
         let listing=await enrichTravel(parsed.listing,geocache);
         if(listing.travelStatus==="too_far"){
           const reason="más de 1h30";
           status.rejected[reason]=(status.rejected[reason]||0)+1;
           rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
-          pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+          pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
         }else{
           const _$=cheerio.load(detail),_items=allJsonLd(_$);
           const detailText=relevantText(_$,_items);
@@ -635,13 +644,13 @@ async function runClassificationPhase(){
           listing.dataConfidence=confidence.level;
           listings.push(mergeListing(null,listing,now));
           status.accepted++;
-          pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"accepted"});
+          pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"accepted"});
         }
       }
     }catch(e){
       const reason=e instanceof Error?e.message:"error detalle";
       status.rejected["error detalle"]=(status.rejected["error detalle"]||0)+1;
-      pipelineResults.push({url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"error",reason});
+      pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"error",reason});
     }
     await wait(120);
   }
