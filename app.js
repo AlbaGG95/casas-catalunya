@@ -346,7 +346,9 @@ function render(){
     els.empty.hidden=false;
     els.empty.textContent="Sincronizando el catálogo seguro por primera vez.";
   }else if(!a.length){
-    els.empty.textContent="No hay viviendas que coincidan con estos filtros. El rastreador seguirá buscando.";
+    els.empty.textContent=els.status.value==="since-visit"&&!previousVisitAt
+      ?"Esta es tu primera visita en este dispositivo. Ya hemos guardado el punto de referencia; en la próxima visita podrás ver solo las viviendas nuevas."
+      :"No hay viviendas que coincidan con estos filtros. El rastreador seguirá buscando.";
   }
 
   els.resultMeta.textContent=a.length>shown.length
@@ -445,6 +447,12 @@ async function load(silent=false){
     if(healthError)throw healthError;
 
     const listings=(rows||[]).map(transformProperty).filter(candidate);
+    const validCompareIds=new Set(listings.map(x=>x.dbId));
+    const cleanedCompare=new Set([...compareSelected].filter(id=>validCompareIds.has(id)));
+    if(cleanedCompare.size!==compareSelected.size){
+      compareSelected=cleanedCompare;
+      persistCompare();
+    }
     const ids=new Set(listings.map(x=>x.id));
     if(silent&&known.size){
       const added=[...ids].filter(x=>!known.has(x));
