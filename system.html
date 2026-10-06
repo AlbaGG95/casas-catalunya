@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173f32">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <title>Estado del sistema · Casa Cataluña</title>
+  <meta name="description" content="Estado operativo de fuentes, filtros y catálogo de Casa Cataluña">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/ui-v2.css">
+</head>
+<body>
+<div class="app system-page">
+  <header class="topbar home-header">
+    <a class="brand brand-link" href="/" aria-label="Volver a Casa Cataluña">
+      <div class="logo">CC</div>
+      <div><strong>Casa Cataluña</strong><span>Estado del sistema</span></div>
+    </a>
+    <a class="header-button system-back" href="/">← Volver al buscador</a>
+  </header>
+
+  <section class="system-intro">
+    <span class="eyebrow">OBSERVABILIDAD</span>
+    <h1>Estado del buscador</h1>
+    <p>Esta pantalla muestra métricas agregadas del catálogo y de cada fuente. No expone anuncios privados, códigos familiares ni datos personales.</p>
+    <div id="systemTimestamp" class="system-timestamp">Cargando estado…</div>
+  </section>
+
+  <div id="systemError" class="empty" hidden></div>
+
+  <main id="systemContent" hidden>
+    <section class="system-kpis">
+      <article><span>Activas</span><strong id="sysActive">—</strong></article>
+      <article><span>Compatibles</span><strong id="sysCompatible">—</strong></article>
+      <article><span>Por verificar</span><strong id="sysReview">—</strong></article>
+      <article><span>Nuevas 24 h</span><strong id="sysNew24">—</strong></article>
+      <article><span>Fuentes sanas</span><strong id="sysHealthy">—</strong></article>
+      <article><span>En cuarentena</span><strong id="sysQuarantined">—</strong></article>
+    </section>
+
+    <section class="system-panel">
+      <div class="system-panel-head">
+        <div><span class="eyebrow">INVARIANTES</span><h2>Controles que nunca deben romperse</h2></div>
+      </div>
+      <div id="invariantGrid" class="invariant-grid"></div>
+    </section>
+
+    <section class="system-panel">
+      <div class="system-panel-head">
+        <div><span class="eyebrow">CATÁLOGO</span><h2>Calidad y frescura</h2></div>
+      </div>
+      <div id="catalogueGrid" class="catalogue-grid"></div>
+    </section>
+
+    <section class="system-panel">
+      <div class="system-panel-head">
+        <div><span class="eyebrow">FUENTES</span><h2>Estado por portal</h2></div>
+        <p>Los portales en cuarentena se reintentan mediante cooldown y prueba de recuperación.</p>
+      </div>
+      <div class="system-table-wrap">
+        <table class="system-table">
+          <thead>
+            <tr>
+              <th>Fuente</th><th>Estado</th><th>Descubiertas</th><th>Accepted ledger</th>
+              <th>Errores ledger</th><th>Último scan</th><th>Último éxito</th>
+            </tr>
+          </thead>
+          <tbody id="sourceRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<script type="module" src="/system.js"></script>
+</body>
+</html>

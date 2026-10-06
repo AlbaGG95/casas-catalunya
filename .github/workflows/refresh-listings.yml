@@ -13,6 +13,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/**"
+      - "supabase/**"
       - "app.js"
       - "index.html"
       - "sw.js"
@@ -20,12 +21,15 @@ on:
       - "property.html"
       - "styles.css"
       - "ui-v2.css"
+      - "system.html"
+      - "system.js"
       - "package.json"
       - ".github/workflows/refresh-listings.yml"
   pull_request:
     branches: ["main"]
     paths:
       - "scripts/**"
+      - "supabase/**"
       - "app.js"
       - "index.html"
       - "sw.js"
@@ -33,6 +37,8 @@ on:
       - "property.html"
       - "styles.css"
       - "ui-v2.css"
+      - "system.html"
+      - "system.js"
       - "package.json"
       - ".github/workflows/refresh-listings.yml"
   schedule:
