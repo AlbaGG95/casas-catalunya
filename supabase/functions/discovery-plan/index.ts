@@ -117,18 +117,20 @@ Deno.serve(async(req)=>{
     const urls=[...byUrl.keys()];
     if(!urls.length)return Response.json({ok:true,discovered:0,planned:0,items:[],sourceStatus,scanMode,generatedAt});
 
-    const [ledger,sources,recentRejections]=await Promise.all([
+    const [ledger,sources,recentRejections,securityRows]=await Promise.all([
       selectByUrls(supabase,"listing_discovery","canonical_url,last_planned_at,last_fetched_at,state,fetch_count",urls),
       selectByUrls(supabase,"listing_sources","canonical_url,last_checked,active",urls),
       selectByUrls(
         supabase,"rejections","canonical_url,detected_at,reason",urls,
         q=>q.gte("detected_at",new Date(Date.now()-48*3600000).toISOString())
-      )
+      ),
+      selectByUrls(supabase,"listing_security_text","canonical_url",urls)
     ]);
 
     const ledgerMap=new Map(ledger.map((x:any)=>[x.canonical_url,x]));
     const sourceMap=new Map(sources.map((x:any)=>[x.canonical_url,x]));
     const rejectionMap=new Map(recentRejections.map((x:any)=>[x.canonical_url,x]));
+    const securityMap=new Set(securityRows.map((x:any)=>x.canonical_url));
 
     const seenRows=items.map((x:any)=>({
       canonical_url:x.url,
@@ -155,8 +157,9 @@ Deno.serve(async(req)=>{
 
       if(reject)continue;
 
+      const needsSecurityBackfill=!!source&&!securityMap.has(item.url);
       const checkedMs=source?.last_checked?new Date(source.last_checked).getTime():0;
-      if(source&&checkedMs&&nowMs-checkedMs<knownFreshMs)continue;
+      if(source&&checkedMs&&nowMs-checkedMs<knownFreshMs&&!needsSecurityBackfill)continue;
 
       const fetchedMs=old?.last_fetched_at?new Date(old.last_fetched_at).getTime():0;
       if(old?.state==="rejected"&&fetchedMs&&nowMs-fetchedMs<48*3600000)continue;
@@ -168,11 +171,13 @@ Deno.serve(async(req)=>{
       eligible.push({
         ...item,
         isNew:!old&&!source,
+        needsSecurityBackfill,
         lastFetchedAt:old?.last_fetched_at||source?.last_checked||null
       });
     }
 
     eligible.sort((a,b)=>{
+      if(a.needsSecurityBackfill!==b.needsSecurityBackfill)return a.needsSecurityBackfill?-1:1;
       if(a.isNew!==b.isNew)return a.isNew?-1:1;
       return new Date(a.lastFetchedAt||0).getTime()-new Date(b.lastFetchedAt||0).getTime();
     });
