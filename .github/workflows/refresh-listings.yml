@@ -23,7 +23,20 @@ permissions:
   id-token: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Ejecutar regresiones de seguridad
+        run: npm test
+
   scan:
+    needs: test
     strategy:
       fail-fast: false
       max-parallel: 8
