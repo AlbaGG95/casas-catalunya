@@ -11,7 +11,8 @@ const out=path.join(dir,"out.json");
 await fs.writeFile(plan,JSON.stringify({
   ok:true,
   generatedAt:new Date().toISOString(),
-  scanMode:"recent",
+  scanMode:"deep",
+  revalidation:true,
   sourceStatus:{},
   items:[]
 }));
@@ -37,6 +38,7 @@ await new Promise((resolve,reject)=>{
 
 const payload=JSON.parse(await fs.readFile(out,"utf8"));
 assert.equal(payload.pipelinePhase,"classify");
+assert.equal(payload.revalidation,true);
 assert.equal(payload.rules.maxPrice,185000);
 assert.deepEqual(payload.listings,[]);
 assert.deepEqual(payload.pipelineResults,[]);

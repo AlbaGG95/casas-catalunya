@@ -153,6 +153,53 @@ jobs:
           printf '%s' "$COMPLETE" | jq -e '.ok == true'
 
 
+  revalidate:
+    if: github.event_name != 'pull_request' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.schedule == '2 * * * *')
+    needs: [test, reclassify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SCAN_MODE: "deep"
+      PIPELINE_PHASE: "classify"
+      PLAN_PATH: "data/revalidation-plan.json"
+      OUTPUT_PATH: "data/revalidation-shard.json"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+
+      - name: Planificar revalidaciones vencidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/revalidation-plan"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data '{"action":"plan","limit":60}' > data/revalidation-plan.json
+          jq -e '.ok == true' data/revalidation-plan.json
+          jq '{planned}' data/revalidation-plan.json
+
+      - name: Revalidar fichas vencidas
+        run: npm run update:listings
+
+      - name: Aplicar resultados de revalidación
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+
+          INGEST="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/revalidation-shard.json)"
+          echo "$INGEST"
+          printf '%s' "$INGEST" | jq -e '.ok == true'
+
+          jq '{action:"complete",generatedAt,pipelineResults}' data/revalidation-shard.json > data/revalidation-complete.json
+          RESULT="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/revalidation-plan"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/revalidation-complete.json)"
+          echo "$RESULT"
+          printf '%s' "$RESULT" | jq -e '.ok == true'
+
   services:
     if: always() && github.event_name != 'pull_request'
     needs: [test, reclassify, scan]
