@@ -63,7 +63,8 @@ const candidate=h=>
   Number(h.bedrooms)>=MIN_BEDROOMS &&
   h.occupancyStatus!=="blocked" &&
   h.financingStatus!=="blocked" &&
-  h.safetyDecision!=="REJECT";
+  h.safetyDecision==="ACCEPT" &&
+  h.conditionStatus==="confirmed";
 
 const publishedAge=h=>h.publishedAt?hours(h.publishedAt):Infinity;
 const detectedAge=h=>hours(h.firstSeen);
@@ -154,7 +155,7 @@ function card(h){
   const badges=[];
   badges.push('<span class="home-state '+(compatible?"ready":"review")+'">'+(compatible?"✓ Recomendada":"Falta confirmar")+'</span>');
   const fresh=freshnessBadge(h);if(fresh)badges.push(fresh);
-  if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–190k</span>');
+  if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–195k</span>');
   if(family?.stage&&family.stage!=="new")badges.push('<span class="home-state family">'+esc(familyStageLabel(family.stage))+'</span>');
 
   const media=img
