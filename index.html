@@ -129,11 +129,22 @@
       <h2>Viviendas encontradas</h2>
       <p id="resultMeta">Cargando…</p>
     </div>
-    <div class="legend">
-      <span><i class="legend-ok"></i> Lista para entrar indicada</span>
-      <span><i class="legend-review"></i> Pendiente de confirmar</span>
+    <div class="safety-switch" role="group" aria-label="Nivel de verificación del estado de la vivienda">
+      <button class="active" data-safety-view="all" type="button">
+        Todas <strong id="allSafetyCount">—</strong>
+      </button>
+      <button data-safety-view="compatible" type="button">
+        Compatibles <strong id="compatibleCount">—</strong>
+      </button>
+      <button data-safety-view="review" type="button">
+        Por verificar <strong id="reviewCount">—</strong>
+      </button>
     </div>
   </section>
+  <div class="safety-explainer">
+    <span><i class="legend-ok"></i><strong>Compatibles:</strong> el anuncio indica un estado apto para entrar y no hay contradicciones detectadas.</span>
+    <span><i class="legend-review"></i><strong>Por verificar:</strong> cumple los filtros duros, pero el anuncio no demuestra suficientemente el estado.</span>
+  </div>
 
   <main id="listingGrid" class="grid home-grid" aria-live="polite"></main>
   <div id="emptyState" class="empty" hidden></div>
