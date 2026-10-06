@@ -27,8 +27,8 @@
       <div><strong>Casa Cataluña</strong><span>Buscador familiar</span></div>
     </a>
     <div class="header-actions">
-      <button id="alertButton" class="header-button">Alertas</button>
-      <button id="familyButton" class="header-button">Familia</button>
+      <button id="alertButton" class="header-button" type="button">Alertas</button>
+      <button id="familyButton" class="header-button" type="button">Familia</button>
       <div class="live" title="Estado de sincronización"><i aria-hidden="true"></i><span id="updatedAt" role="status" aria-live="polite">Sincronizando…</span></div>
     </div>
   </header>
@@ -121,7 +121,7 @@
     <div><span class="sync-dot" aria-hidden="true"></span><strong>Buscador actualizado automáticamente</strong></div>
     <span>Última actualización: <b id="lastScan">—</b></span>
     <span>Portales: <b id="sourceHealth">—</b></span>
-    <button id="toggleMap" class="text-button">Mostrar mapa</button>
+    <button id="toggleMap" class="text-button" type="button" aria-expanded="false" aria-controls="candidateMap">Mostrar mapa</button>
   </section>
 
   <section class="map-panel home-map">
@@ -156,7 +156,7 @@
     <span><i class="legend-review" aria-hidden="true"></i><strong>Falta confirmar:</strong> la casa encaja en lo básico, pero faltan datos importantes por comprobar.</span>
   </div>
 
-  <main id="listingGrid" class="grid home-grid" aria-live="polite"></main>
+  <main id="listingGrid" class="grid home-grid" aria-live="polite" tabindex="-1"></main>
   <div id="emptyState" class="empty" hidden></div>
   <button id="loadMore" class="load-more" hidden>Mostrar más viviendas</button>
 
@@ -174,13 +174,13 @@
 
 <div id="compareDock" class="compare-dock" hidden>
   <div><strong id="compareCount">0 seleccionadas</strong><span>Selecciona entre 2 y 4 viviendas.</span></div>
-  <div><button id="clearCompare">Limpiar</button><button id="openCompare" class="primary">Comparar</button></div>
+  <div><button id="clearCompare" type="button">Limpiar</button><button id="openCompare" class="primary" type="button">Comparar</button></div>
 </div>
 
 <div id="compareModal" class="compare-modal" hidden>
   <div class="compare-backdrop" data-close-compare></div>
   <section class="compare-dialog" role="dialog" aria-modal="true" aria-labelledby="compareTitle">
-    <div class="compare-dialog-head"><div><span>COMPARADOR</span><h2 id="compareTitle">Comparar viviendas</h2></div><button data-close-compare aria-label="Cerrar">×</button></div>
+    <div class="compare-dialog-head"><div><span>COMPARADOR</span><h2 id="compareTitle">Comparar viviendas</h2></div><button data-close-compare type="button" aria-label="Cerrar comparador">×</button></div>
     <div id="compareTableWrap" class="compare-table-wrap"></div>
   </section>
 </div>
