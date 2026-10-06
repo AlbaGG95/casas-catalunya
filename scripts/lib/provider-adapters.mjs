@@ -8,10 +8,10 @@ const ADAPTERS={
   },
   "Habitaclia":{
     detail:/\/comprar\/(?:vivienda|casa|chalet)\//i,
-    require:/\/d(?:\?|$)/i,
+    require:/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/d(?:\?|$)/i,
     embedded:[
-      /https?:\\?\/\\?\/www\.habitaclia\.com\\?\/comprar\\?\/(?:vivienda|casa|chalet)\\?\/[^"'<>\s]+?\\?\/d/gi,
-      /\/comprar\/(?:vivienda|casa|chalet)\/[^"'<>\s]+?\/d/gi
+      /https?:\\?\/\\?\/www\.habitaclia\.com\\?\/comprar\\?\/(?:vivienda|casa|chalet)\\?\/[^"'<>\s]*?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\?\/d/gi,
+      /\/comprar\/(?:vivienda|casa|chalet)\/[^"'<>\s]*?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/d/gi
     ]
   },
   "Pisos.com":{
