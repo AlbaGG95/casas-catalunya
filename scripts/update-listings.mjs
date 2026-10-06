@@ -90,15 +90,19 @@ const BLOCK_PATTERNS=[
   ["entre medianeras",/entre\s+medianeras|casa\s+medianera/i],
   ["finca rústica",/finca\s+r[uú]stica|suelo\s+r[uú]stico|terreno\s+r[uú]stico/i],
   ["uso no habitual",/no\s+es\s+posible\s+como\s+vivienda\s+habitual|uso\s+temporal/i],
-  ["sin servicios",/sin\s+alcantarillado|sin\s+agua\s+de\s+red|sin\s+luz\s+de\s+red|sin\s+suministros/i]
+  ["sin servicios",/sin\s+alcantarillado|sin\s+agua\s+de\s+red|sin\s+luz\s+de\s+red|sin\s+suministros/i],
+  ["en rentabilidad",/en\s+rentabilidad|contrato\s+de\s+arrendamiento|arrendatario/i],
+  ["tanteo/retracto",/derecho\s+de\s+tanteo\s+y\s+retracto|decreto\s+ley\s+1\/2015/i],
+  ["restricción hipotecaria",/impedimento\s+para\s+obtener\s+financiaci[oó]n\s+hipotecaria|condiciones\s+del\s+inmueble\s+pueden\s+suponer\s+un\s+impedimento/i],
+  ["situación especial",/en\s+situaci[oó]n\s+especial/i]
 ];
 
 const BAD_CONDITION=[
   ["reforma integral",/reforma\s+integral|para\s+reformar|a\s+reformar|necesita\s+reforma|requiere\s+reforma/i],
   ["estado de origen",/estado\s+de\s+origen|de\s+origen\s+y\s+requiere|para\s+actualizar/i],
   ["ruina/derribo",/\bruina\b|para\s+derribar|derribo|estado\s+ruinoso/i],
-  ["sin terminar",/sin\s+terminar|obra\s+inacabada|obra\s+parada|por\s+terminar/i],
-  ["mal estado",/mal\s+estado|muy\s+deteriorad|inhabitable/i]
+  ["sin terminar",/sin\s+terminar|obra\s+inacabada|obra\s+parada|por\s+terminar|a\s+medio\s+construir|medio\s+construida/i],
+  ["mal estado",/mal\s+estado|muy\s+deteriorad|inhabitable|precisa\s+reformas\s+importantes|parcialmente\s+rehabilitad/i]
 ];
 
 const POSITIVE={
@@ -145,7 +149,7 @@ function abs(base,href){
     const u=new URL(href.replace(/\\u002F/g,"/").replace(/\\\//g,"/"),base);
     u.hash="";
     // Normalize detail URLs so tracking parameters do not create duplicate properties.
-    if(/fotocasa\.es|habitaclia\.com|pisos\.com/i.test(u.hostname)){
+    if(/fotocasa\.es|habitaclia\.com|pisos\.com|yaencontre\.com|servihabitat\.com|idealista\.com|indomio\.es/i.test(u.hostname)){
       for(const key of [...u.searchParams.keys()]){
         if(/^(from|utm_|source|campaign|medium|ref)/i.test(key))u.searchParams.delete(key);
       }
@@ -337,7 +341,7 @@ function placeFromUrl(url,provider){
       const i=parts.findIndex(x=>x==="comprar");
       const slugPart=parts[i+1]||"";
       let s=slugPart
-        .replace(/^(?:casa|chalet|vivienda)-/i,"")
+        .replace(/^(?:casa_unifamiliar|casa-unifamiliar|chalet_independiente|chalet-independiente|casa|chalet|vivienda)-?/i,"")
         .replace(/-\d{6,}_[0-9]+$/i,"")
         .replace(/(?:_centro_urbano|_casco_urbano)$/i,"")
         .replace(/\d{5}$/,"")
@@ -375,15 +379,16 @@ function extractPlace(items,$,url,provider,meta,title){
     const p=clean(a?.addressLocality||"");
     if(plausiblePlace(p))return p;
   }
-  const fromUrl=placeFromUrl(url,provider);
-  if(plausiblePlace(fromUrl))return fromUrl;
-
   const crumb=clean($('[aria-label*="breadcrumb" i],.breadcrumb,.breadcrumbs').text());
   if(crumb){
     const parts=crumb.split(/\s*[>›|]\s*/).filter(Boolean);
     const candidate=parts.findLast?.(x=>plausiblePlace(x)&&!/comprar|venta|casa|chalet/i.test(x));
     if(candidate)return clean(candidate);
   }
+
+  const fromUrl=placeFromUrl(url,provider);
+  if(plausiblePlace(fromUrl))return fromUrl;
+
   const desc=clean(meta);
   const dm=desc.match(/(?:venta\s+de\s+(?:casa|chalet).*?\s+en|casa.*?\s+en|chalet.*?\s+en)\s+([^.,]{2,60})/i);
   if(dm&&plausiblePlace(dm[1]))return clean(dm[1]);
@@ -410,12 +415,26 @@ function extractGeo(items){
   return null;
 }
 function extractImage(items,$){
-  const meta=$('meta[property="og:image"]').attr("content");
-  if(meta&&/^https?:/i.test(meta))return meta;
+  const candidates=[
+    $('meta[property="og:image"]').attr("content"),
+    $('meta[name="twitter:image"]').attr("content"),
+    $('link[rel="image_src"]').attr("href")
+  ];
   for(const x of items){
-    const img=Array.isArray(x.image)?x.image[0]:x.image;
-    const url=typeof img==="string"?img:img?.url;
-    if(url&&/^https?:/i.test(url))return url;
+    const imgs=Array.isArray(x.image)?x.image:[x.image];
+    for(const img of imgs){
+      const url=typeof img==="string"?img:img?.url;
+      if(url)candidates.push(url);
+    }
+  }
+  const hero=$('main img[src], article img[src], [class*="gallery" i] img[src], [class*="photo" i] img[src]').first().attr("src");
+  if(hero)candidates.push(hero);
+  for(const raw of candidates){
+    if(!raw)continue;
+    try{
+      const u=new URL(raw,$("base").attr("href")||undefined);
+      if(/^https?:$/.test(u.protocol) && !/logo|icon|avatar|placeholder/i.test(u.pathname))return u.toString();
+    }catch{}
   }
   return null;
 }
