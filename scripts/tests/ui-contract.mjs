@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const html=fs.readFileSync("index.html","utf8");
+const app=fs.readFileSync("app.js","utf8");
 const required=[
   "searchInput","provinceFilter","budgetFilter","statusFilter","sortFilter",
   "bedroomFilter","driveFilter","confidenceFilter","extraFilter",
