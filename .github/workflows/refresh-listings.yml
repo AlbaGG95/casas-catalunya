@@ -14,6 +14,8 @@ on:
     paths:
       - "scripts/**"
       - "app.js"
+      - "index.html"
+      - "sw.js"
       - "property.js"
       - "property.html"
       - "styles.css"
@@ -24,6 +26,8 @@ on:
     paths:
       - "scripts/**"
       - "app.js"
+      - "index.html"
+      - "sw.js"
       - "property.js"
       - "property.html"
       - "styles.css"
