@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import * as cheerio from "cheerio";
+import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
+import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION,blockReason,badConditionReason} from "./lib/safety-rules.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -9,10 +11,7 @@ const SCAN_PROVIDER=(process.env.SCAN_PROVIDER||"").trim();
 const SCAN_PROVINCE=(process.env.SCAN_PROVINCE||"").trim();
 const INCREMENTAL_ONLY=(process.env.INCREMENTAL_ONLY||"false")==="true";
 const OUTPUT_PATH=process.env.OUTPUT_PATH||"data/listings.json";
-const MAX_PRICE=185000;
 const SOFT_PRICE=180000;
-const MIN_BEDROOMS=3;
-const MAX_DRIVE_MINUTES=90;
 const ORIGIN={lat:41.4247,lon:2.1647,label:"08032 Barcelona"};
 const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://github.com/AlbaGG95/casas-catalunya)";
 const MAX_DETAILS=MODE==="deep"?1600:360;
@@ -69,41 +68,6 @@ function sourceDefinitions(){
     (!SCAN_PROVINCE || src.province===SCAN_PROVINCE)
   );
 }
-
-const BLOCK_PATTERNS=[
-  ["ocupada",/\bocupad[ao]s?\b|ocupaci[oó]n\s+ilegal|okupad[ao]/i],
-  ["sin posesión",/sin\s+posesi[oó]n|sin\s+acceso\s+al\s+interior|situaci[oó]n\s+posesoria/i],
-  ["inquilinos",/\binquilin[oa]s?\b|con\s+arrendatari|arrendamiento\s+vigente/i],
-  ["alquilada",/\balquilad[ao]s?\b|\barrendad[ao]s?\b/i],
-  ["no visitable",/no\s+(?:se\s+puede\s+)?visitar|no\s+visitable|sin\s+posibilidad\s+de\s+visita/i],
-  ["nuda propiedad",/nuda\s+propiedad/i],
-  ["proindiviso",/proindiviso|pro-indiviso|participaci[oó]n\s+indivisa/i],
-  ["subasta",/\bsubasta\b|cesi[oó]n\s+de\s+remate|ejecuci[oó]n\s+hipotecaria/i],
-  ["venta de deuda",/venta\s+de\s+deuda|cesi[oó]n\s+de\s+cr[eé]dito/i],
-  ["solo inversores",/s[oó]lo\s+(?:para\s+)?inversores|especial\s+inversores/i],
-  ["no hipotecable",/no\s+hipotecable|no\s+admite\s+hipoteca|no\s+es\s+viable\s+la\s+financiaci[oó]n|requiere\s+fondos\s+propios/i],
-  ["vpo/restricción",/vivienda\s+de\s+protecci[oó]n\s+oficial|\bVPO\b/i],
-  ["cargas indicadas",/con\s+cargas\s+registrales|cargas\s+pendientes|gravamen\s+pendiente/i],
-  ["sin cédula",/sin\s+c[eé]dula(?:\s+de\s+habitabilidad)?/i],
-  ["adosada",/\badosad[ao]s?\b|casa\s+adosada/i],
-  ["pareada",/\bparead[ao]s?\b|casa\s+pareada/i],
-  ["entre medianeras",/entre\s+medianeras|casa\s+medianera/i],
-  ["finca rústica",/finca\s+r[uú]stica|suelo\s+r[uú]stico|terreno\s+r[uú]stico/i],
-  ["uso no habitual",/no\s+es\s+posible\s+como\s+vivienda\s+habitual|uso\s+temporal/i],
-  ["sin servicios",/sin\s+alcantarillado|sin\s+agua\s+de\s+red|sin\s+luz\s+de\s+red|sin\s+suministros/i],
-  ["en rentabilidad",/en\s+rentabilidad|contrato\s+de\s+arrendamiento|arrendatario/i],
-  ["tanteo/retracto",/derecho\s+de\s+tanteo\s+y\s+retracto|decreto\s+ley\s+1\/2015/i],
-  ["restricción hipotecaria",/impedimento\s+para\s+obtener\s+financiaci[oó]n\s+hipotecaria|condiciones\s+del\s+inmueble\s+pueden\s+suponer\s+un\s+impedimento/i],
-  ["situación especial",/en\s+situaci[oó]n\s+especial/i]
-];
-
-const BAD_CONDITION=[
-  ["reforma integral",/reforma\s+integral|para\s+reformar|a\s+reformar|necesita\s+reforma|requiere\s+reforma/i],
-  ["estado de origen",/estado\s+de\s+origen|de\s+origen\s+y\s+requiere|para\s+actualizar/i],
-  ["ruina/derribo",/\bruina\b|para\s+derribar|derribo|estado\s+ruinoso/i],
-  ["sin terminar",/sin\s+terminar|obra\s+inacabada|obra\s+parada|por\s+terminar|a\s+medio\s+construir|medio\s+construida/i],
-  ["mal estado",/mal\s+estado|muy\s+deteriorad|inhabitable|precisa\s+reformas\s+importantes|parcialmente\s+rehabilitad/i]
-];
 
 const POSITIVE={
   house:/casa|chalet|torre|unifamiliar|vivienda\s+independiente/i,
@@ -261,90 +225,6 @@ function relevantText($,items){
   return clean(chunks.join(" "));
 }
 
-function firstNumber(v){
-  if(v==null)return null;
-  const raw=String(v).replace(/[^0-9.,]/g,"");
-  const n=Number(raw.replace(/\./g,"").replace(",","."));
-  return Number.isFinite(n)&&n>0?n:null;
-}
-function parseEuro(raw){
-  if(!raw)return null;
-  const n=Number(String(raw).replace(/[^0-9]/g,""));
-  return Number.isFinite(n)&&n>=10000&&n<=5000000?n:null;
-}
-function structuredPrices(items){
-  const out=[];
-  for(const x of items){
-    for(const p of [x?.offers?.price,x?.price,x?.offers?.lowPrice]){
-      const n=firstNumber(p);
-      if(n&&n>=10000&&n<=5000000)out.push(Math.round(n));
-    }
-  }
-  return [...new Set(out)];
-}
-function labeledPropertyPrice(text){
-  const patterns=[
-    /precio\s+del\s+inmueble\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i,
-    /precio\s+de\s+venta\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i
-  ];
-  for(const rx of patterns){
-    const m=text.match(rx);
-    const n=parseEuro(m?.[1]);
-    if(n)return n;
-  }
-  return null;
-}
-function extractProminentPrice($){
-  const candidates=[];
-  const selectors=[
-    'h1',
-    '[data-testid*="price" i]','[class*="price" i]','[class*="precio" i]',
-    'main','article'
-  ];
-  for(const sel of selectors){
-    const node=$(sel).first();
-    if(!node.length)continue;
-    const txt=clean((sel==="h1"?node.parent().text():node.text())).slice(0,3500);
-    for(const m of txt.matchAll(/(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/g)){
-      const n=parseEuro(m[1]);
-      if(n)candidates.push(n);
-      if(candidates.length>=8)break;
-    }
-    if(candidates.length)break;
-  }
-  return candidates[0]||null;
-}
-function extractPrice(text,items,$,provider){
-  const labeled=labeledPropertyPrice(text);
-  const structured=structuredPrices(items);
-
-  // Fotocasa embeds mortgage/tax figures such as "Impuestos y gastos",
-  // "Ahorro aportado" and "Importe de la hipoteca" on the same page.
-  // Never infer the sale price from a generic price-like element there.
-  if(provider==="Fotocasa"){
-    if(labeled){
-      const disagree=structured.find(n=>Math.abs(n-labeled)/Math.max(n,labeled)>.08);
-      return {price:labeled,conflict:!!disagree,evidence:"fotocasa_labeled_property_price"};
-    }
-    if(structured.length===1)return {price:structured[0],conflict:false,evidence:"structured"};
-    if(structured.length>1){
-      const min=Math.min(...structured),max=Math.max(...structured);
-      if(max/min>1.08)return {price:null,conflict:true,evidence:"structured_conflict"};
-      return {price:Math.round(structured.reduce((a,b)=>a+b,0)/structured.length),conflict:false,evidence:"structured_consensus"};
-    }
-    return {price:null,conflict:true,evidence:"fotocasa_unverified_price"};
-  }
-
-  if(labeled)return {price:labeled,conflict:false,evidence:"labeled"};
-  if(structured.length)return {price:structured[0],conflict:false,evidence:"structured"};
-
-  const prominent=extractProminentPrice($);
-  if(prominent)return {price:prominent,conflict:false,evidence:"prominent"};
-
-  const m=text.match(/(?:precio[^0-9]{0,20})?(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i);
-  const fallback=parseEuro(m?.[1]);
-  return {price:fallback,conflict:false,evidence:fallback?"generic":"none"};
-}
 function extractBedrooms(text,items){
   for(const x of items){
     for(const v of [x.numberOfRooms,x.numberOfBedrooms,x.numberOfBedroomsTotal,x.bedrooms]){
@@ -514,14 +394,6 @@ function extractPublishedAt(items,$,text,sourceKind,now){
   if(sourceKind==="recent")return {publishedAt:now,evidence:"recent_source"};
   return {publishedAt:null,evidence:"unknown"};
 }
-function blockReason(text){
-  for(const [reason,rx] of BLOCK_PATTERNS)if(rx.test(text))return reason;
-  return null;
-}
-function badConditionReason(text){
-  for(const [reason,rx] of BAD_CONDITION)if(rx.test(text))return reason;
-  return null;
-}
 function freshnessStatus(publishedAt,evidence,now){
   if(evidence==="recent_source")return "recent";
   if(!publishedAt)return "unknown";
@@ -541,6 +413,30 @@ function summarize(title,place,price,bedrooms,plotM2){
   b.push(new Intl.NumberFormat("es-ES").format(price)+" €");
   return b.join(", ")+".";
 }
+function confidenceOf(x){
+  let score=0;
+  if(x.priceConfidence==="high")score+=35;
+  else if(x.priceConfidence==="medium")score+=22;
+  else if(x.priceConfidence==="low")score+=8;
+
+  const bedConfidence=x.evidence?.bedrooms?.confidence;
+  if(bedConfidence==="high")score+=15;
+  else if(bedConfidence==="medium")score+=10;
+
+  if(x.evidence?.garden?.matched)score+=15;
+  if(x.independentStatus==="confirmed")score+=10;
+  else if(x.independentStatus==="probable")score+=6;
+  if(x.conditionStatus==="confirmed")score+=10;
+  if(x.place)score+=8;
+  if(x.travelStatus==="confirmed")score+=7;
+
+  const bounded=Math.max(0,Math.min(100,score));
+  return {
+    score:bounded,
+    level:bounded>=80?"high":bounded>=55?"medium":"low"
+  };
+}
+
 function scoreOf(x,text){
   let s=28;
   if(x.price<=SOFT_PRICE)s+=12;else s+=4;
@@ -628,7 +524,8 @@ function parseDetail(src,url,html,now){
 
   const listing={
     id:idFor(src.provider,url),provider:src.provider,title:title||"Casa detectada",place,province,
-    price,bedrooms,houseM2,plotM2,url,imageUrl:extractImage(items,$),priceEvidence:priceInfo.evidence,
+    price,bedrooms,houseM2,plotM2,url,imageUrl:extractImage(items,$),
+    priceEvidence:priceInfo.evidence,priceConfidence:priceInfo.confidence,
     summary:(meta||summarize(title,place,price,bedrooms,plotM2)).slice(0,420),
     firstSeen:null,lastSeen:now,lastChecked:now,active:true,
     publishedAt:date.publishedAt,freshnessEvidence:date.evidence,freshnessStatus:fresh,discoveredVia:src.kind,
@@ -641,9 +538,22 @@ function parseDetail(src,url,html,now){
     servicesStatus:POSITIVE.services.test(text)?"confirmed":"pending",
     travelStatus:"pending",driveMinutes:null,geo:extractGeo(items),
     hasGarage:POSITIVE.garage.test(text),hasPool:POSITIVE.pool.test(text),
-    stretchBudget:price>SOFT_PRICE,score:0
+    stretchBudget:price>SOFT_PRICE,score:0,
+    evidence:{
+      price:{evidence:priceInfo.evidence,confidence:priceInfo.confidence,value:price},
+      bedrooms:{confidence:items.some(x=>x?.numberOfRooms||x?.numberOfBedrooms||x?.numberOfBedroomsTotal||x?.bedrooms)?"high":"medium",value:bedrooms},
+      garden:{confidence:"high",matched:true},
+      independent:{confidence:POSITIVE.independent.test(text)?"high":(/\bchalet\b/i.test(title)&&!/adosad|paread|medianer/i.test(text)?"medium":"unknown")},
+      condition:{confidence:conditionPositive?"high":"unknown"},
+      occupancy:{confidence:POSITIVE.free.test(text)?"high":"medium"},
+      locality:{confidence:place?"medium":"unknown",value:place||null}
+    },
+    dataConfidence:"unknown",confidenceScore:0
   };
   listing.score=scoreOf(listing,text);
+  const confidence=confidenceOf(listing);
+  listing.confidenceScore=confidence.score;
+  listing.dataConfidence=confidence.level;
   return {listing};
 }
 
@@ -739,6 +649,9 @@ async function main(){
           if(listing.travelStatus==="too_far")found.set(old.url,{...old,active:false,lastChecked:now,removalReason:"más de 1h30"});
           else{
             listing.score=scoreOf(listing,text);
+            const confidence=confidenceOf(listing);
+            listing.confidenceScore=confidence.score;
+            listing.dataConfidence=confidence.level;
             found.set(old.url,mergeListing(old,listing,now));
           }
         }else{
