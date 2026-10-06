@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import * as cheerio from "cheerio";
 import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
 import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
-import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
+import {evaluateSafetyText,evaluateSafetyDocument,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
 import {buildSourceDefinitions,sourceDefinitionKey} from "./lib/source-catalog.mjs";
@@ -414,7 +414,13 @@ function parseDetail(src,url,html,now){
   const items=allJsonLd($);
   const securityText=extractListingSecurityText($,items);
   const text=securityText.safetyText;
-  const safety=evaluateSafetyText(text);
+  const safety=evaluateSafetyDocument(securityText);
+  securityText.decisionEvidence={
+    decision:safety.decision,
+    code:safety.code,
+    reason:safety.reason,
+    ...(safety.evidenceDetail||{})
+  };
   if(safety.decision===SAFETY_DECISIONS.REJECT)return {reject:"safety:"+safety.code,safety};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
   if(!POSITIVE.garden.test(text))return {reject:"sin jardín/parcela detectada"};
@@ -594,7 +600,7 @@ async function runClassificationPhase(){
         const reason=parsed.reject||"descartada";
         status.rejected[reason]=(status.rejected[reason]||0)+1;
         rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
-        pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+        pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason,safetyEvidence:parsed.safety?.evidenceDetail?{code:parsed.safety.code,reason:parsed.safety.reason,...parsed.safety.evidenceDetail}:null});
       }else{
         let listing=await enrichTravel(parsed.listing,geocache);
         if(listing.travelStatus==="too_far"){
@@ -722,8 +728,8 @@ async function main(){
 
   for(const old of revalidate){
     try{
-      const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),text=relevantText($,items);
-      const safety=evaluateSafetyText(text);
+      const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),securityText=extractListingSecurityText($,items),text=securityText.safetyText;
+      const safety=evaluateSafetyDocument(securityText);
       if(isUnavailable(text)||safety.decision===SAFETY_DECISIONS.REJECT){
         found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":"safety:"+safety.code});
       }else{
