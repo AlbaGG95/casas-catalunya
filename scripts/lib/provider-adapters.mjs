@@ -69,3 +69,17 @@ export function embeddedDetailPatterns(provider){
 export function supportedProviders(){
   return Object.keys(ADAPTERS);
 }
+
+
+export function canonicalListingUrl(input){
+  try{
+    const u=new URL(String(input||""));
+    u.hash="";
+    for(const key of [...u.searchParams.keys()]){
+      if(/^(from|utm_|source|campaign|medium|ref)/i.test(key))u.searchParams.delete(key);
+    }
+    return u.toString();
+  }catch{
+    return String(input||"");
+  }
+}
