@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import * as cheerio from "cheerio";
 import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
-import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION,blockReason,badConditionReason} from "./lib/safety-rules.mjs";
+import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
+import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
@@ -74,7 +75,6 @@ const POSITIVE={
   house:/casa|chalet|torre|unifamiliar|vivienda\s+independiente/i,
   independent:/casa\s+independiente|chalet\s+independiente|vivienda\s+independiente|cuatro\s+vientos|4\s+vientos|a\s+cuatro\s+vientos|chalet\s+individual|casa\s+individual/i,
   garden:/jard[ií]n\s+privad|jard[ií]n|parcela\s+(?:privada|propia)?|patio\s+privado|terreno\s+privado/i,
-  condition:/buen\s+estado|muy\s+buen\s+estado|reformad[ao]|para\s+entrar\s+a\s+vivir|lista\s+para\s+entrar|obra\s+nueva|semi\s*nuev|impecable|excelente\s+estado|perfecto\s+estado/i,
   free:/libre\s+de\s+ocupantes|entrega\s+libre|vivienda\s+vac[ií]a|desocupad[ao]|sin\s+inquilinos|libre\s+y\s+disponible/i,
   clearCharges:/libre\s+de\s+cargas|sin\s+cargas\s+registrales/i,
   fiber:/fibra\s+[oó]ptica|fibra\s+disponible|conexi[oó]n\s+de\s+fibra/i,
@@ -508,11 +508,11 @@ function parseDetail(src,url,html,now){
   const $=cheerio.load(html);
   const items=allJsonLd($);
   const text=relevantText($,items);
-  const block=blockReason(text);if(block)return {reject:block};
-  const conditionBlock=badConditionReason(text);if(conditionBlock)return {reject:conditionBlock};
+  const safety=evaluateSafetyText(text);
+  if(safety.decision===SAFETY_DECISIONS.REJECT)return {reject:"safety:"+safety.code,safety};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
   if(!POSITIVE.garden.test(text))return {reject:"sin jardín/parcela detectada"};
-  const conditionPositive=POSITIVE.condition.test(text) || /estado\s*:\s*bien|en\s+buen\s+estado|a\s+estrenar/i.test(text);
+  const conditionPositive=safety.decision===SAFETY_DECISIONS.ACCEPT;
 
   const title=clean($("h1").first().text()||$('meta[property="og:title"]').attr("content")||$("title").text()).slice(0,180);
   if(/(?:casa|finca|mas[ií]a)\s+r[uú]stica/i.test(title))return {reject:"rústica"};
@@ -545,6 +545,8 @@ function parseDetail(src,url,html,now){
     registryStatus:POSITIVE.clearCharges.test(text)?"claimed_clear":"pending",
     independentStatus:POSITIVE.independent.test(text)?"confirmed":(/\bchalet\b/i.test(title)&&!/adosad|paread|medianer/i.test(text)?"probable":"pending"),
     conditionStatus:conditionPositive?"confirmed":"pending",
+    safetyDecision:safety.decision,
+    safetyReason:safety.reason,
     fiberStatus:POSITIVE.fiber.test(text)?"confirmed":"pending",
     servicesStatus:POSITIVE.services.test(text)?"confirmed":"pending",
     travelStatus:"pending",driveMinutes:null,geo:sourceGeo,
@@ -559,7 +561,14 @@ function parseDetail(src,url,html,now){
       bedrooms:{confidence:items.some(x=>x?.numberOfRooms||x?.numberOfBedrooms||x?.numberOfBedroomsTotal||x?.bedrooms)?"high":"medium",value:bedrooms},
       garden:{confidence:"high",matched:true},
       independent:{confidence:POSITIVE.independent.test(text)?"high":(/\bchalet\b/i.test(title)&&!/adosad|paread|medianer/i.test(text)?"medium":"unknown")},
-      condition:{confidence:conditionPositive?"high":"unknown"},
+      condition:{
+        confidence:conditionPositive?"high":safety.decision===SAFETY_DECISIONS.REVIEW?"medium":"unknown",
+        decision:safety.decision,
+        code:safety.code,
+        reason:safety.reason,
+        evidence:safety.evidence
+      },
+      safety,
       occupancy:{confidence:POSITIVE.free.test(text)?"high":"medium"},
       locality:{confidence:place?"medium":"unknown",value:place||null},
       officialIdentity:{
@@ -661,9 +670,9 @@ async function main(){
   for(const old of revalidate){
     try{
       const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),text=relevantText($,items);
-      const block=blockReason(text),conditionBlock=badConditionReason(text);
-      if(isUnavailable(text)||block||conditionBlock){
-        found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":(block||conditionBlock)});
+      const safety=evaluateSafetyText(text);
+      if(isUnavailable(text)||safety.decision===SAFETY_DECISIONS.REJECT){
+        found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":"safety:"+safety.code});
       }else{
         const src={provider:old.provider,province:old.province,kind:old.discoveredVia||"deep"};
         const parsed=parseDetail(src,old.url,html,now);
