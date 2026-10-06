@@ -19,6 +19,7 @@ on:
       - "property.js"
       - "property.html"
       - "styles.css"
+      - "ui-v2.css"
       - "package.json"
       - ".github/workflows/refresh-listings.yml"
   pull_request:
@@ -31,6 +32,7 @@ on:
       - "property.js"
       - "property.html"
       - "styles.css"
+      - "ui-v2.css"
       - "package.json"
       - ".github/workflows/refresh-listings.yml"
   schedule:
