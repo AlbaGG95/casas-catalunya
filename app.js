@@ -15,12 +15,14 @@ const els={
   sort:$("#sortFilter"),visible:$("#visibleCount"),newCount:$("#newCount"),
   under180:$("#under180Count"),savedCount:$("#savedCount"),updatedAt:$("#updatedAt"),
   lastScan:$("#lastScan"),sourceHealth:$("#sourceHealth"),toast:$("#toast"),
-  loadMore:$("#loadMore"),resultMeta:$("#resultMeta")
+  loadMore:$("#loadMore"),resultMeta:$("#resultMeta"),familyBtn:$("#familyButton")
 };
 
 let payload={listings:[],sourceStatus:{}};
 let known=new Set();
-let saved=new Set(JSON.parse(localStorage.getItem("savedHomes")||"[]"));
+let localSaved=new Set(JSON.parse(localStorage.getItem("savedHomes")||"[]"));
+let familySaved=new Set();
+let familyCode=localStorage.getItem("familyCode")||"";
 let realtimeChannel=null;
 let visibleLimit=PAGE_SIZE;
 
@@ -90,6 +92,7 @@ function dedupeListings(list){
   return out;
 }
 
+function isSaved(h){return familyCode?familySaved.has(h.dbId):localSaved.has(h.id)}
 function tag(t,c=""){return '<span class="tag '+c+'">'+esc(t)+'</span>'}
 function check(t,s){return '<span class="check '+s+'">'+(s==="ok"?"✓ ":s==="pending"?"⚠ ":"• ")+esc(t)+'</span>'}
 function toast(t){els.toast.textContent=t;els.toast.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>els.toast.hidden=true,4200)}
@@ -116,7 +119,7 @@ function card(h){
 
   const travel=h.driveMinutes!=null?Math.round(h.driveMinutes)+" min aprox.":"Distancia pendiente";
   const link=safe(h.url);
-  const sv=saved.has(h.id);
+  const sv=isSaved(h);
   const place=cleanPlace(h.place)||"Localidad por confirmar";
   const sourceCount=(h.sources||[]).length||1;
 
@@ -138,7 +141,7 @@ function card(h){
       check(h.registryStatus==="verified_clear"?"Cargas verificadas":h.registryStatus==="claimed_clear"?"Anuncio afirma libre de cargas":"Nota simple pendiente",h.registryStatus==="verified_clear"?"ok":"pending")+
     '</div>'+
     '<div class="meta"><span>'+esc(timing)+'</span><span>Revisada '+fmt(h.lastSeen||h.lastChecked)+'</span><span>'+sourceCount+' fuente'+(sourceCount>1?"s":"")+'</span></div>'+
-    '<div class="actions"><button class="'+(sv?"saved":"")+'" data-save="'+esc(h.id)+'">'+(sv?"★ Guardada":"☆ Guardar")+'</button>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Ver anuncio</a>':"")+'</div>'+
+    '<div class="actions"><button class="'+(sv?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(sv?"★ Guardada":"☆ Guardar")+'</button>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Ver anuncio</a>':"")+'</div>'+
     '</div></article>';
 }
 
@@ -157,7 +160,7 @@ function filteredList(){
   if(s==="verified")a=a.filter(h=>h.status==="verified");
   if(s==="independent")a=a.filter(h=>["confirmed","probable"].includes(h.independentStatus));
   if(s==="pending")a=a.filter(h=>h.conditionStatus!=="confirmed"||h.independentStatus!=="confirmed"||h.registryStatus!=="verified_clear");
-  if(s==="saved")a=a.filter(h=>saved.has(h.id));
+  if(s==="saved")a=a.filter(isSaved);
 
   const so=els.sort.value;
   const date=h=>new Date(h.publishedAt||h.firstSeen||0).getTime();
@@ -180,7 +183,7 @@ function render(){
   els.visible.textContent=bootstrapping?"—":a.length;
   els.newCount.textContent=bootstrapping?"—":all.filter(isRecent).length;
   els.under180.textContent=bootstrapping?"—":all.filter(h=>h.price<=TARGET_PRICE).length;
-  els.savedCount.textContent=saved.size;
+  els.savedCount.textContent=familyCode?familySaved.size:localSaved.size;
 
   if(bootstrapping){
     els.empty.hidden=false;
@@ -202,10 +205,20 @@ function render(){
   const down=st.filter(x=>x?.status==="down").length;
   els.sourceHealth.textContent=st.length?(ok+" activas"+(down?" · "+down+" bloqueadas":"")):"—";
 
-  document.querySelectorAll("[data-save]").forEach(x=>x.onclick=()=>{
-    const id=x.dataset.save;
-    saved.has(id)?saved.delete(id):saved.add(id);
-    localStorage.setItem("savedHomes",JSON.stringify([...saved]));
+  document.querySelectorAll("[data-save]").forEach(x=>x.onclick=async()=>{
+    const id=x.dataset.save,dbId=x.dataset.db;
+    if(familyCode){
+      const next=!familySaved.has(dbId);
+      x.disabled=true;
+      const {error}=await db.rpc("family_toggle_favorite",{p_code:familyCode,p_property_id:dbId,p_favorite:next});
+      x.disabled=false;
+      if(error){toast("No se pudo sincronizar el favorito familiar.");return}
+      next?familySaved.add(dbId):familySaved.delete(dbId);
+      toast(next?"★ Guardada para la familia":"Favorito eliminado");
+    }else{
+      localSaved.has(id)?localSaved.delete(id):localSaved.add(id);
+      localStorage.setItem("savedHomes",JSON.stringify([...localSaved]));
+    }
     render();
   });
 }
@@ -286,6 +299,43 @@ async function load(silent=false){
   }
 }
 
+async function loadFamilyStatus(code,{quiet=false}={}){
+  if(!code)return false;
+  const {data,error}=await db.rpc("family_status_list",{p_code:code});
+  if(error){
+    if(!quiet)toast("Código familiar no válido o sincronización no disponible.");
+    return false;
+  }
+  familySaved=new Set((data||[]).filter(x=>x.favorite).map(x=>x.property_id));
+  familyCode=code;
+  localStorage.setItem("familyCode",code);
+  updateFamilyButton();
+  render();
+  return true;
+}
+
+function updateFamilyButton(){
+  if(!els.familyBtn)return;
+  els.familyBtn.textContent=familyCode?"✓ Favoritos familiares":"Conectar familia";
+  els.familyBtn.classList.toggle("connected",!!familyCode);
+}
+
+async function connectFamily(){
+  if(familyCode){
+    if(confirm("¿Desconectar los favoritos familiares en este dispositivo?")){
+      familyCode="";
+      familySaved=new Set();
+      localStorage.removeItem("familyCode");
+      updateFamilyButton();
+      render();
+    }
+    return;
+  }
+  const code=prompt("Introduce el código familiar de Casa Cataluña:");
+  if(!code)return;
+  await loadFamilyStatus(code.trim());
+}
+
 function subscribeRealtime(){
   if(realtimeChannel)db.removeChannel(realtimeChannel);
   realtimeChannel=db.channel("casas-catalunya-live")
@@ -300,8 +350,22 @@ function subscribeRealtime(){
   render();
 }));
 els.loadMore.addEventListener("click",()=>{visibleLimit+=PAGE_SIZE;render()});
+els.familyBtn?.addEventListener("click",connectFamily);
+updateFamilyButton();
 
-load().then(subscribeRealtime);
+load().then(async()=>{
+  subscribeRealtime();
+  if(familyCode){
+    const ok=await loadFamilyStatus(familyCode,{quiet:true});
+    if(!ok){
+      familyCode="";
+      familySaved=new Set();
+      localStorage.removeItem("familyCode");
+      updateFamilyButton();
+      render();
+    }
+  }
+});
 setInterval(()=>load(true),60000);
 
 if("serviceWorker" in navigator){
