@@ -6,6 +6,7 @@ import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION} f
 import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
+import {buildSourceDefinitions,sourceDefinitionKey} from "./lib/source-catalog.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -22,56 +23,12 @@ const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://gith
 const MAX_DETAILS=MODE==="deep"?1600:360;
 const MAX_REVALIDATE=MODE==="deep"?160:36;
 
-const PROVINCES=[
-  {name:"Barcelona",slug:"barcelona"},
-  {name:"Tarragona",slug:"tarragona"},
-  {name:"Girona",slug:"girona"},
-  {name:"Lleida",slug:"lleida"}
-];
-
 function sourceDefinitions(){
-  const out=[];
-  for(const p of PROVINCES){
-    out.push({
-      provider:"Fotocasa",province:p.name,kind:"recent",
-      base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3`,
-      pages:1,maxDetails:MODE==="deep"?80:50
-    });
-    out.push({
-      provider:"Habitaclia",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.habitaclia.com/comprar/chalets/${p.slug}-provincia/baratos/s`,
-      pages:MODE==="deep"?12:3,maxDetails:MODE==="deep"?160:55
-    });
-    out.push({
-      provider:"Pisos.com",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.pisos.com/venta/casas-${p.slug}/con-3-habitaciones/hasta-185000/`,
-      pages:MODE==="deep"?12:3,maxDetails:MODE==="deep"?150:55
-    });
-    out.push({
-      provider:"Yaencontre",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.yaencontre.com/venta/casas/${p.slug}-provincia/t-chalets/e-baratos`,
-      pages:1,maxDetails:MODE==="deep"?120:55
-    });
-    out.push({
-      provider:"Servihabitat",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.servihabitat.com/es/venta/vivienda/${p.slug}`,
-      pages:1,maxDetails:MODE==="deep"?120:50
-    });
-    out.push({
-      provider:"Idealista",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.idealista.com/venta-viviendas/${p.slug}-provincia/con-chalets-independientes,precio-hasta_185000/`,
-      pages:MODE==="deep"?6:2,maxDetails:MODE==="deep"?120:50
-    });
-    out.push({
-      provider:"Indomio",province:p.name,kind:MODE==="recent"?"recentish":"deep",
-      base:`https://www.indomio.es/venta-casas/${p.slug}-provincia/con-jardin/`,
-      pages:MODE==="deep"?6:1,maxDetails:MODE==="deep"?80:35
-    });
-  }
-  return out.filter(src =>
-    (!SCAN_PROVIDER || src.provider===SCAN_PROVIDER) &&
-    (!SCAN_PROVINCE || src.province===SCAN_PROVINCE)
-  );
+  return buildSourceDefinitions({
+    mode:MODE,
+    scanProvider:SCAN_PROVIDER,
+    scanProvince:SCAN_PROVINCE
+  });
 }
 
 const POSITIVE={
@@ -578,7 +535,7 @@ function mergeListing(old,n,now){
   const discoveredVia=old?.discoveredVia==="recent"||n.discoveredVia==="recent"?"recent":(old?.discoveredVia||n.discoveredVia);
   return {...old,...n,firstSeen:old?.firstSeen||now,lastSeen:now,lastChecked:now,discoveredVia,missedRuns:0,active:true,priceHistory:history.slice(-30)};
 }
-function sourceKey(src){return src.provider+" "+src.province+" "+src.kind}
+function sourceKey(src){return sourceDefinitionKey(src)}
 function isUnavailable(text){
   return /anuncio\s+(?:ya\s+)?no\s+disponible|inmueble\s+(?:ya\s+)?no\s+disponible|anuncio\s+retirado|inmueble\s+retirado|\breservad[ao]\b|vendid[ao]/i.test(text);
 }
