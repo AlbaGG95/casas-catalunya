@@ -2,7 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
 import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
-import { nextSourceHealthState } from "./source-health.mjs";
+import { nextSourceHealthState } from "./source-health.mjs";\nimport { MAX_PRICE, MIN_BEDROOMS, MAX_DRIVE_MINUTES } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO = "AlbaGG95/casas-catalunya";
 const ALLOWED_REF = "refs/heads/main";
@@ -33,8 +33,8 @@ function hardReasons(l: any) {
   const price = Number(l?.price);
   const beds = Number(l?.bedrooms);
   const text = `${l?.title ?? ""} ${l?.summary ?? ""}`;
-  if (!Number.isInteger(price) || price < 1 || price > 185000) reasons.push("price");
-  if (!Number.isInteger(beds) || beds < 3 || beds > 20) reasons.push("bedrooms");
+  if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) reasons.push("price");
+  if (!Number.isInteger(beds) || beds < MIN_BEDROOMS || beds > 20) reasons.push("bedrooms");
   if (!["Barcelona","Girona","Tarragona","Lleida"].includes(l?.province)) reasons.push("province");
   if (l?.active === false) reasons.push("inactive");
 
@@ -42,7 +42,7 @@ function hardReasons(l: any) {
   if (edgeSafety.decision === SAFETY_DECISIONS.REJECT) reasons.push("safety:"+edgeSafety.code);
   if (l?.safetyDecision === SAFETY_DECISIONS.REJECT) reasons.push("crawler_safety:"+String(l?.safetyCode||"reject"));
 
-  if (l?.travelStatus === "too_far" || Number(l?.driveMinutes) > 90) reasons.push("too_far");
+  if (l?.travelStatus === "too_far" || Number(l?.driveMinutes) > MAX_DRIVE_MINUTES) reasons.push("too_far");
   return reasons;
 }
 
