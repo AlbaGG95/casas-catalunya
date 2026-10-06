@@ -39,9 +39,12 @@ for(const [name,source] of [["ingest",ingest],["reclassify",reclassify],["system
 
 const app=fs.readFileSync("app.js","utf8");
 const property=fs.readFileSync("property.js","utf8");
+const propertyHtml=fs.readFileSync("property.html","utf8");
 assert.match(app,/from "\.\/search-criteria\.js"/);
 assert.match(property,/from "\.\/search-criteria\.js"/);
 assert.doesNotMatch(app,/const HARD_MAX_PRICE=\d+/);
 assert.doesNotMatch(property,/const HARD_MAX_PRICE=\d+/);
+assert.match(propertyHtml,/id="familyOfferAmount"[^>]*max="190000"/);
+assert.doesNotMatch(propertyHtml,/id="familyOfferAmount"[^>]*max="185000"/);
 
 console.log("Central search criteria contract: OK");
