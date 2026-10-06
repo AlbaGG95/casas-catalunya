@@ -76,9 +76,10 @@ function aggregateSourceStatus(sourceStatus: Record<string, any>) {
   for (const [key, s] of Object.entries(sourceStatus || {})) {
     const provider = String(key).split(" ")[0];
     const cur = byProvider.get(provider) || {
-      discovered: 0, accepted: 0, rejected: 0, priceConflicts: 0, ok: true, errors: []
+      pages: 0, discovered: 0, accepted: 0, rejected: 0, priceConflicts: 0, ok: true, errors: []
     };
     const v: any = s;
+    cur.pages += Number(v?.pages || 0);
     cur.discovered += Number(v?.discovered || 0);
     cur.accepted += Number(v?.accepted || 0);
     const rejected = v?.rejected || {};
@@ -119,7 +120,7 @@ Deno.serve(async (req) => {
 
     const { data: priorHealth, error: healthReadError } = providers.length
       ? await supabase.from("source_health")
-          .select("provider,status,ingestion_enabled,conflict_count,consecutive_failures,quarantine_reason,last_conflict_at,last_success_at,auto_disabled_at")
+          .select("provider,status,ingestion_enabled,conflict_count,consecutive_failures,quarantine_reason,last_conflict_at,last_success_at,auto_disabled_at,cooldown_until,last_recovered_at,recovery_count")
           .in("provider", providers)
       : { data: [], error: null };
     if (healthReadError) throw healthReadError;
@@ -129,31 +130,51 @@ Deno.serve(async (req) => {
     const healthRows:any[] = [];
 
     for (const provider of providers) {
-      const s = sourceSummary.get(provider) || { discovered:0,accepted:0,rejected:0,priceConflicts:0,ok:true,errors:[] };
+      const s = sourceSummary.get(provider) || { pages:0,discovered:0,accepted:0,rejected:0,priceConflicts:0,ok:true,errors:[] };
       const prev:any = priorHealthMap.get(provider) || {};
+      const nowMs = new Date(generatedAt).getTime();
       const previousFailures = Number(prev.consecutive_failures || 0);
-      const failures = s.ok ? 0 : previousFailures + 1;
+      let failures = s.ok ? 0 : previousFailures + 1;
       const conflictRate = s.discovered > 0 ? s.priceConflicts / s.discovered : 0;
       const priceKill = s.priceConflicts >= 3 || (s.discovered >= 10 && conflictRate >= 0.20);
       const failureKill = failures >= 3;
-      const alreadyDisabled = prev.ingestion_enabled === false || prev.status === "quarantined";
-      const autoDisabled = alreadyDisabled || priceKill || failureKill;
+      const wasDisabled = prev.ingestion_enabled === false || prev.status === "quarantined";
+      const cooldownMs = prev.cooldown_until ? new Date(prev.cooldown_until).getTime() : 0;
+      const cooldownExpired = !cooldownMs || nowMs >= cooldownMs;
+      const healthyProbe = s.ok === true && Number(s.pages || 0) > 0;
+      const canRecover = wasDisabled && cooldownExpired && healthyProbe && !priceKill;
+
+      let autoDisabled = false;
+      let recovered = false;
+      let reason:string|null = null;
+      let cooldownUntil:any = prev.cooldown_until || null;
+
+      if (canRecover) {
+        recovered = true;
+        failures = 0;
+        autoDisabled = false;
+        cooldownUntil = null;
+      } else if (wasDisabled) {
+        autoDisabled = true;
+        reason = prev.quarantine_reason || "previous_quarantine";
+        if (cooldownExpired && !healthyProbe) {
+          cooldownUntil = new Date(nowMs + 60 * 60 * 1000).toISOString();
+        }
+      } else if (priceKill || failureKill) {
+        autoDisabled = true;
+        reason = priceKill
+          ? `price_conflicts:${s.priceConflicts}/${s.discovered}`
+          : `consecutive_failures:${failures}`;
+        cooldownUntil = new Date(nowMs + 30 * 60 * 1000).toISOString();
+      }
 
       if (autoDisabled) disabledProviders.add(provider);
-
-      const reason = alreadyDisabled
-        ? (prev.quarantine_reason || "manual_or_previous_quarantine")
-        : priceKill
-          ? `price_conflicts:${s.priceConflicts}/${s.discovered}`
-          : failureKill
-            ? `consecutive_failures:${failures}`
-            : null;
 
       healthRows.push({
         provider,
         last_run_at: generatedAt,
         last_success_at: s.ok ? generatedAt : (prev.last_success_at || null),
-        status: autoDisabled ? "quarantined" : (s.ok ? "ok" : (s.discovered > 0 ? "degraded" : "down")),
+        status: autoDisabled ? "quarantined" : (s.ok ? "ok" : (s.pages > 0 ? "degraded" : "down")),
         discovered_count: s.discovered,
         accepted_count: s.accepted,
         rejected_count: s.rejected,
@@ -164,6 +185,9 @@ Deno.serve(async (req) => {
         auto_disabled_at: autoDisabled ? (prev.auto_disabled_at || generatedAt) : null,
         quarantine_reason: autoDisabled ? reason : null,
         last_conflict_at: s.priceConflicts > 0 ? generatedAt : (prev.last_conflict_at || null),
+        cooldown_until: cooldownUntil,
+        last_recovered_at: recovered ? generatedAt : (prev.last_recovered_at || null),
+        recovery_count: Number(prev.recovery_count || 0) + (recovered ? 1 : 0),
       });
     }
 
