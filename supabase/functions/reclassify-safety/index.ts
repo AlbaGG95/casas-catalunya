@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
-import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";\nimport { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO="AlbaGG95/casas-catalunya";
 const ALLOWED_REF="refs/heads/main";
@@ -35,8 +35,8 @@ Deno.serve(async(req)=>{
       .from("properties")
       .select("id,title,summary,status,price,bedrooms,condition_status,safety_decision,safety_code")
       .in("status",["candidate","verified"])
-      .lte("price",185000)
-      .gte("bedrooms",3);
+      .lte("price",MAX_PRICE)
+      .gte("bedrooms",MIN_BEDROOMS);
 
     if(error)throw error;
 
