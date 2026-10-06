@@ -50,6 +50,6 @@ assert.doesNotMatch(app,/alt="" referrerpolicy/);
 assert.doesNotMatch(propertyJs,/alt="" referrerpolicy/);
 
 assert.doesNotMatch(app,/;\\nlet compareReturnFocus/);
-assert.match(property,/id="familyOfferAmount"[^>]*max="190000"/);
+assert.match(property,/id="familyOfferAmount"[^>]*max="195000"/);
 
 console.log("Accessible family UI contract: OK");

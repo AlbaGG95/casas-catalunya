@@ -1,5 +1,5 @@
 export const SEARCH_CRITERIA=Object.freeze({
-  maxPrice:190000,
+  maxPrice:195000,
   preferredPrice:180000,
   midPrice:185000,
   minBedrooms:3,
