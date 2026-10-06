@@ -16,6 +16,9 @@ const detail=$("#propertyDetail"),errorBox=$("#detailError"),toastEl=$("#toast")
 
 let property=null;
 let familyCode=localStorage.getItem("familyCode")||"";
+let familyMemberId=localStorage.getItem("familyMemberId")||"";
+let familyMemberName=localStorage.getItem("familyMemberName")||"";
+let familyWorkspaceData=null;
 let familySaved=false;
 let localSaved=new Set(JSON.parse(localStorage.getItem("savedHomes")||"[]"));
 
@@ -54,6 +57,239 @@ function cleanPlace(value){
   if(!s)return "";
   if(/casa unifamiliar|urbanitzacions|construcci[oó]n|carrer|calle|avenida|cam[ií]|junio park/i.test(s)&&s.length>35)return "";
   return s;
+}
+
+function familyStageLabel(stage){
+  return ({
+    new:"Nueva",contact:"Contactar",visit_requested:"Visita solicitada",visited:"Visitada",
+    negotiating:"Negociando",offer:"Oferta realizada",discarded:"Descartada"
+  })[stage]||"Nueva";
+}
+function familyVerdictLabel(v){
+  return ({yes:"Sí",maybe:"Duda",no:"No"})[v]||"Sin veredicto";
+}
+function toLocalInput(v){
+  if(!v)return "";
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return "";
+  const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,16);
+}
+function updateFamilyConnectionUI(){
+  const btn=$("#familyConnectDetail");
+  if(!btn)return;
+  btn.textContent=familyCode?"✓ Conectada":"Conectar";
+  btn.classList.toggle("connected",!!familyCode);
+  $("#familyDisconnected").hidden=!!familyCode;
+  $("#familyWorkspace").hidden=!familyCode;
+  $("#familyMemberLabel").textContent=familyMemberName||"Sin nombre en este dispositivo";
+}
+function updateFamilyConditionalFields(){
+  const stage=$("#familyStage")?.value||"new";
+  $("#familyVisitField").hidden=!["visit_requested","visited","negotiating","offer"].includes(stage);
+  $("#familyOfferField").hidden=stage!=="offer";
+  $("#familyDiscardField").hidden=stage!=="discarded";
+}
+async function ensureFamilyMember({askName=false}={}){
+  if(!familyCode)return false;
+  if(!familyMemberId){
+    familyMemberId=crypto.randomUUID();
+    localStorage.setItem("familyMemberId",familyMemberId);
+  }
+  if(!familyMemberName&&askName){
+    const name=prompt("¿Qué nombre quieres usar para identificar tus votos y notas?");
+    if(!name?.trim())return false;
+    familyMemberName=name.trim().slice(0,40);
+    localStorage.setItem("familyMemberName",familyMemberName);
+  }
+  if(!familyMemberName)return false;
+
+  const {error}=await db.rpc("family_member_upsert",{
+    p_code:familyCode,p_member_id:familyMemberId,p_display_name:familyMemberName
+  });
+  if(error){
+    console.error("family_member_upsert",error);
+    toast("No se pudo registrar tu perfil familiar.");
+    return false;
+  }
+  updateFamilyConnectionUI();
+  return true;
+}
+function renderFamilyWorkspace(data){
+  familyWorkspaceData=data||{status:{stage:"new"},feedback:[]};
+  const status=familyWorkspaceData.status||{};
+  const feedback=Array.isArray(familyWorkspaceData.feedback)?familyWorkspaceData.feedback:[];
+
+  $("#familyStage").value=status.stage||"new";
+  $("#familySharedNotes").value=status.notes||"";
+  $("#familyVisitAt").value=toLocalInput(status.visit_at);
+  $("#familyOfferAmount").value=status.offer_amount||"";
+  $("#familyDiscardReason").value=status.discard_reason||"";
+  updateFamilyConditionalFields();
+
+  const mine=feedback.find(x=>x.member_id===familyMemberId);
+  $("#familyRating").value=mine?.rating??"";
+  $("#familyVerdict").value=mine?.verdict||"";
+  $("#familyPersonalNote").value=mine?.note||"";
+
+  const ratings=feedback.map(x=>Number(x.rating)).filter(x=>Number.isFinite(x)&&x>=1&&x<=5);
+  const avg=ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:null;
+  $("#familyAverage").textContent=avg?avg.toFixed(1)+"/5 · "+ratings.length+" voto"+(ratings.length===1?"":"s"):"Sin votos";
+
+  $("#familyFeedbackList").innerHTML=feedback.length?feedback.map(x=>
+    '<article class="family-feedback-item '+(x.member_id===familyMemberId?"mine":"")+'">'+
+      '<div><strong>'+esc(x.display_name||"Familia")+'</strong><span>'+esc(x.rating?x.rating+"/5":"Sin nota")+' · '+esc(familyVerdictLabel(x.verdict))+'</span></div>'+
+      (x.note?'<p>'+esc(x.note)+'</p>':"")+
+      '<small>Actualizado '+fmt(x.updated_at)+'</small>'+
+    '</article>'
+  ).join(""):'<p class="detail-muted">Todavía no hay opiniones familiares sobre esta vivienda.</p>';
+
+  const activity=Array.isArray(familyWorkspaceData.activity)?familyWorkspaceData.activity:[];
+  $("#familyActivityList").innerHTML=activity.length?activity.map(x=>{
+    const who=x.display_name||"Familia";
+    let message="Actualización familiar";
+    if(x.event_type==="status"){
+      const from=x.from_stage?familyStageLabel(x.from_stage):null;
+      const to=familyStageLabel(x.to_stage);
+      message=from&&from!==to?"cambió "+from+" → "+to:"marcó "+to;
+    }else if(x.event_type==="feedback"){
+      const rating=x.payload?.rating?x.payload.rating+"/5":"sin nota";
+      message="actualizó su opinión · "+rating+" · "+familyVerdictLabel(x.payload?.verdict);
+    }else if(x.event_type==="feedback_removed"){
+      message="borró su opinión";
+    }
+    return '<article class="family-activity-item"><span class="family-activity-dot"></span><div><strong>'+esc(who)+'</strong><p>'+esc(message)+'</p><small>'+fmt(x.created_at)+'</small></div></article>';
+  }).join(""):'<p class="detail-muted">Todavía no hay actividad registrada.</p>';
+
+  $("#familyMemberLabel").textContent=familyMemberName||"Sin nombre en este dispositivo";
+  familySaved=!!status.favorite;
+  const saveBtn=$("#detailSave");
+  if(saveBtn){
+    saveBtn.textContent=familySaved?"★ Guardada":"☆ Guardar";
+    saveBtn.classList.toggle("saved",familySaved);
+  }
+}
+async function loadFamilyWorkspace({quiet=false}={}){
+  updateFamilyConnectionUI();
+  if(!familyCode||!property)return false;
+
+  const {data,error}=await db.rpc("family_property_workspace",{
+    p_code:familyCode,p_property_id:property.id
+  });
+  if(error){
+    console.error("family_property_workspace",error);
+    if(!quiet)toast("No se pudo cargar el espacio familiar.");
+    return false;
+  }
+  renderFamilyWorkspace(data);
+  return true;
+}
+async function connectFamilyDetail(){
+  if(familyCode){
+    if(confirm("¿Desconectar el espacio familiar en este dispositivo?")){
+      familyCode="";
+      familyWorkspaceData=null;
+      familySaved=false;
+      localStorage.removeItem("familyCode");
+      updateFamilyConnectionUI();
+      await loadSavedState(property);
+    }
+    return;
+  }
+
+  const code=prompt("Introduce el código familiar de Casa Cataluña:");
+  if(!code?.trim())return;
+  familyCode=code.trim();
+  localStorage.setItem("familyCode",familyCode);
+  const ok=await loadFamilyWorkspace();
+  if(!ok){
+    familyCode="";
+    localStorage.removeItem("familyCode");
+    updateFamilyConnectionUI();
+    return;
+  }
+  await ensureFamilyMember({askName:true});
+  await loadFamilyWorkspace({quiet:true});
+}
+async function renameFamilyMember(){
+  if(!familyCode){await connectFamilyDetail();return}
+  const name=prompt("Nombre que aparecerá en tus votos y notas:",familyMemberName||"");
+  if(!name?.trim())return;
+  familyMemberName=name.trim().slice(0,40);
+  localStorage.setItem("familyMemberName",familyMemberName);
+  await ensureFamilyMember();
+  await loadFamilyWorkspace({quiet:true});
+}
+async function saveFamilyProgress(){
+  if(!property||!familyCode){await connectFamilyDetail();if(!familyCode)return}
+  if(!await ensureFamilyMember({askName:true}))return;
+
+  const stage=$("#familyStage").value;
+  const offerRaw=$("#familyOfferAmount").value.trim();
+  const offer=offerRaw?Number(offerRaw):null;
+  if(offer!=null&&(!Number.isInteger(offer)||offer<1||offer>HARD_MAX_PRICE)){
+    toast("La oferta debe estar entre 1 € y 185.000 €.");
+    return;
+  }
+  const visitRaw=$("#familyVisitAt").value;
+  const visitAt=visitRaw?new Date(visitRaw).toISOString():null;
+
+  $("#familySaveProgress").disabled=true;
+  const {data,error}=await db.rpc("family_status_update",{
+    p_code:familyCode,
+    p_property_id:property.id,
+    p_member_id:familyMemberId,
+    p_stage:stage,
+    p_notes:$("#familySharedNotes").value.trim()||null,
+    p_visit_at:visitAt,
+    p_offer_amount:offer,
+    p_discard_reason:$("#familyDiscardReason").value.trim()||null
+  });
+  $("#familySaveProgress").disabled=false;
+  if(error){
+    console.error("family_status_update",error);
+    toast("No se pudo guardar el seguimiento familiar.");
+    return;
+  }
+  renderFamilyWorkspace(data);
+  toast("Seguimiento familiar actualizado.");
+}
+async function saveFamilyFeedback(){
+  if(!property||!familyCode){await connectFamilyDetail();if(!familyCode)return}
+  if(!await ensureFamilyMember({askName:true}))return;
+
+  const ratingRaw=$("#familyRating").value;
+  const rating=ratingRaw?Number(ratingRaw):null;
+  const verdict=$("#familyVerdict").value||null;
+  const note=$("#familyPersonalNote").value.trim()||null;
+
+  $("#familySaveFeedback").disabled=true;
+  const {data,error}=await db.rpc("family_feedback_upsert",{
+    p_code:familyCode,p_property_id:property.id,p_member_id:familyMemberId,
+    p_rating:rating,p_verdict:verdict,p_note:note
+  });
+  $("#familySaveFeedback").disabled=false;
+  if(error){
+    console.error("family_feedback_upsert",error);
+    toast("No se pudo guardar tu opinión.");
+    return;
+  }
+  renderFamilyWorkspace(data);
+  toast("Tu opinión se ha compartido con la familia.");
+}
+async function deleteFamilyFeedback(){
+  if(!property||!familyCode||!familyMemberId)return;
+  if(!confirm("¿Borrar tu valoración y comentario de esta vivienda?"))return;
+  const {data,error}=await db.rpc("family_feedback_delete",{
+    p_code:familyCode,p_property_id:property.id,p_member_id:familyMemberId
+  });
+  if(error){
+    console.error("family_feedback_delete",error);
+    toast("No se pudo borrar tu opinión.");
+    return;
+  }
+  renderFamilyWorkspace(data);
+  toast("Tu opinión se ha borrado.");
 }
 
 function buildScoreBreakdown(p){
@@ -289,6 +525,7 @@ async function toggleSaved(){
     btn.textContent=next?"★ Guardada":"☆ Guardar";
     btn.classList.toggle("saved",next);
     toast(next?"Guardada para la familia":"Eliminada de favoritos");
+    await loadFamilyWorkspace({quiet:true});
     return;
   }
   const key=property.fingerprint||property.id;
@@ -341,6 +578,7 @@ function render(p){
   renderChecklist(p);
   renderVerification(p);
   loadSavedState(p);
+  updateFamilyConnectionUI();
 
   detail.hidden=false;
   errorBox.hidden=true;
@@ -391,11 +629,30 @@ async function load(){
   }
 
   render(data);
+  if(familyCode){
+    const ok=await loadFamilyWorkspace({quiet:true});
+    if(!ok){
+      familyCode="";
+      familyWorkspaceData=null;
+      familySaved=false;
+      localStorage.removeItem("familyCode");
+      updateFamilyConnectionUI();
+      await loadSavedState(data);
+    }
+  }
 }
 
 $("#detailSave").addEventListener("click",toggleSaved);
+$("#familyConnectDetail")?.addEventListener("click",connectFamilyDetail);
+$("#familyRenameMember")?.addEventListener("click",renameFamilyMember);
+$("#familyStage")?.addEventListener("change",updateFamilyConditionalFields);
+$("#familySaveProgress")?.addEventListener("click",saveFamilyProgress);
+$("#familySaveFeedback")?.addEventListener("click",saveFamilyFeedback);
+$("#familyDeleteFeedback")?.addEventListener("click",deleteFamilyFeedback);
 
+updateFamilyConnectionUI();
 load();
+setInterval(()=>{if(familyCode&&property)loadFamilyWorkspace({quiet:true})},15000);
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));

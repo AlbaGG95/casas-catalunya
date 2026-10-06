@@ -27,7 +27,10 @@ let payload={listings:[],sourceStatus:{}};
 let known=new Set();
 let localSaved=new Set(JSON.parse(localStorage.getItem("savedHomes")||"[]"));
 let familySaved=new Set();
+let familyOverview=new Map();
 let familyCode=localStorage.getItem("familyCode")||"";
+let familyMemberId=localStorage.getItem("familyMemberId")||"";
+let familyMemberName=localStorage.getItem("familyMemberName")||"";
 let realtimeChannel=null;
 let visibleLimit=PAGE_SIZE;
 let candidateMap=null;
@@ -108,6 +111,16 @@ function dedupeListings(list){
 }
 
 function isSaved(h){return familyCode?familySaved.has(h.dbId):localSaved.has(h.id)}
+function familyInfo(h){return familyCode?familyOverview.get(h.dbId)||null:null}
+function familyStageLabel(stage){
+  return ({
+    new:"Nueva",contact:"Contactar",visit_requested:"Visita solicitada",visited:"Visitada",
+    negotiating:"Negociando",offer:"Oferta",discarded:"Descartada"
+  })[stage]||"";
+}
+function familyStageClass(stage){
+  return stage==="offer"?"verified":stage==="discarded"?"pending":stage==="negotiating"?"fit":"candidate";
+}
 function tag(t,c=""){return '<span class="tag '+c+'">'+esc(t)+'</span>'}
 function check(t,s){return '<span class="check '+s+'">'+(s==="ok"?"✓ ":s==="pending"?"⚠ ":"• ")+esc(t)+'</span>'}
 function toast(t){els.toast.textContent=t;els.toast.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>els.toast.hidden=true,4200)}
@@ -127,6 +140,9 @@ function card(h){
   if((h.score||0)>=84)ts.push(tag("Buen encaje","fit"));
   if(stretch(h))ts.push(tag("180–185k","stretch"));
   if(h.registryStatus!=="verified_clear")ts.push(tag("Nota simple pendiente","pending"));
+  const family=familyInfo(h);
+  if(family?.stage&&family.stage!=="new")ts.push(tag("Familia · "+familyStageLabel(family.stage),familyStageClass(family.stage)));
+  if(Number(family?.average_rating)>0)ts.push(tag("Familia "+Number(family.average_rating).toFixed(1)+"/5","fit"));
 
   const img=safe(h.imageUrl);
   const media=img
@@ -190,6 +206,13 @@ function filteredList(){
   if(s==="independent")a=a.filter(h=>["confirmed","probable"].includes(h.independentStatus));
   if(s==="pending")a=a.filter(h=>h.conditionStatus!=="confirmed"||h.independentStatus!=="confirmed"||h.registryStatus!=="verified_clear");
   if(s==="saved")a=a.filter(isSaved);
+  if(s==="family-contact")a=a.filter(h=>familyInfo(h)?.stage==="contact");
+  if(s==="family-visit")a=a.filter(h=>familyInfo(h)?.stage==="visit_requested");
+  if(s==="family-visited")a=a.filter(h=>familyInfo(h)?.stage==="visited");
+  if(s==="family-negotiating")a=a.filter(h=>familyInfo(h)?.stage==="negotiating");
+  if(s==="family-offer")a=a.filter(h=>familyInfo(h)?.stage==="offer");
+  if(s==="family-discarded")a=a.filter(h=>familyInfo(h)?.stage==="discarded");
+  else if(familyCode)a=a.filter(h=>familyInfo(h)?.stage!=="discarded");
 
   const so=els.sort.value;
   const date=h=>new Date(h.publishedAt||h.firstSeen||0).getTime();
@@ -268,6 +291,12 @@ function comparisonValue(h,key){
   if(key==="condition")return h.conditionStatus==="confirmed"?"Para entrar indicado":"Pendiente";
   if(key==="services")return servicesKnown(h)?"Detectados":"Pendiente";
   if(key==="confidence")return h.confidenceScore+"/100";
+  if(key==="family"){
+    const f=familyInfo(h);
+    if(!f)return "Sin seguimiento";
+    const rating=Number(f.average_rating)>0?" · "+Number(f.average_rating).toFixed(1)+"/5":"";
+    return familyStageLabel(f.stage)+rating;
+  }
   if(key==="score")return h.score+"/100";
   return "—";
 }
@@ -277,7 +306,7 @@ function openCompare(){
   const rows=[
     ["Precio","price"],["Habitaciones","bedrooms"],["Vivienda","houseM2"],["Parcela","plotM2"],
     ["Trayecto","driveMinutes"],["Independencia","independent"],["Estado","condition"],
-    ["Servicios","services"],["Confianza de datos","confidence"],["Encaje","score"]
+    ["Servicios","services"],["Familia","family"],["Confianza de datos","confidence"],["Encaje","score"]
   ];
   const head='<tr><th>Dato</th>'+homes.map(h=>'<th><a href="/property.html?id='+encodeURIComponent(h.dbId)+'">'+esc(cleanPlace(h.place)||h.title)+'</a><small>'+esc(euro(h.price))+'</small></th>').join("")+'</tr>';
   const body=rows.map(([label,key])=>'<tr><th>'+esc(label)+'</th>'+homes.map(h=>'<td>'+esc(comparisonValue(h,key))+'</td>').join("")+'</tr>').join("");
@@ -376,6 +405,8 @@ function render(){
       x.disabled=false;
       if(error){toast("No se pudo sincronizar el favorito familiar.");return}
       next?familySaved.add(dbId):familySaved.delete(dbId);
+      const current=familyOverview.get(dbId)||{property_id:dbId,stage:"new"};
+      familyOverview.set(dbId,{...current,favorite:next});
       toast(next?"★ Guardada para la familia":"Favorito eliminado");
     }else{
       localSaved.has(id)?localSaved.delete(id):localSaved.add(id);
@@ -478,13 +509,39 @@ async function load(silent=false){
   }
 }
 
+async function ensureFamilyMember({askName=false}={}){
+  if(!familyCode)return false;
+  if(!familyMemberId){
+    familyMemberId=crypto.randomUUID();
+    localStorage.setItem("familyMemberId",familyMemberId);
+  }
+  if(!familyMemberName&&askName){
+    const name=prompt("¿Qué nombre quieres usar para identificar tus votos y notas familiares?");
+    if(!name?.trim())return false;
+    familyMemberName=name.trim().slice(0,40);
+    localStorage.setItem("familyMemberName",familyMemberName);
+  }
+  if(!familyMemberName)return false;
+
+  const {error}=await db.rpc("family_member_upsert",{
+    p_code:familyCode,p_member_id:familyMemberId,p_display_name:familyMemberName
+  });
+  if(error){
+    console.error("family_member_upsert",error);
+    toast("No se pudo registrar este dispositivo en el espacio familiar.");
+    return false;
+  }
+  return true;
+}
+
 async function loadFamilyStatus(code,{quiet=false}={}){
   if(!code)return false;
-  const {data,error}=await db.rpc("family_status_list",{p_code:code});
+  const {data,error}=await db.rpc("family_overview",{p_code:code});
   if(error){
     if(!quiet)toast("Código familiar no válido o sincronización no disponible.");
     return false;
   }
+  familyOverview=new Map((data||[]).map(x=>[x.property_id,x]));
   familySaved=new Set((data||[]).filter(x=>x.favorite).map(x=>x.property_id));
   familyCode=code;
   localStorage.setItem("familyCode",code);
@@ -495,15 +552,19 @@ async function loadFamilyStatus(code,{quiet=false}={}){
 
 function updateFamilyButton(){
   if(!els.familyBtn)return;
-  els.familyBtn.textContent=familyCode?"✓ Favoritos familiares":"Conectar familia";
+  els.familyBtn.textContent=familyCode
+    ? "✓ Familia"+(familyMemberName?" · "+familyMemberName:"")
+    : "Conectar familia";
   els.familyBtn.classList.toggle("connected",!!familyCode);
 }
 
 async function connectFamily(){
   if(familyCode){
-    if(confirm("¿Desconectar los favoritos familiares en este dispositivo?")){
+    const choice=confirm("¿Quieres desconectar el espacio familiar en este dispositivo?");
+    if(choice){
       familyCode="";
       familySaved=new Set();
+      familyOverview=new Map();
       localStorage.removeItem("familyCode");
       updateFamilyButton();
       render();
@@ -512,7 +573,10 @@ async function connectFamily(){
   }
   const code=prompt("Introduce el código familiar de Casa Cataluña:");
   if(!code)return;
-  await loadFamilyStatus(code.trim());
+  const ok=await loadFamilyStatus(code.trim());
+  if(!ok)return;
+  await ensureFamilyMember({askName:true});
+  updateFamilyButton();
 }
 
 function subscribeRealtime(){
@@ -552,6 +616,7 @@ load().then(async()=>{
     if(!ok){
       familyCode="";
       familySaved=new Set();
+      familyOverview=new Map();
       localStorage.removeItem("familyCode");
       updateFamilyButton();
       render();
@@ -559,6 +624,7 @@ load().then(async()=>{
   }
 });
 setInterval(()=>load(true),60000);
+setInterval(()=>{if(familyCode)loadFamilyStatus(familyCode,{quiet:true})},15000);
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(e=>console.warn("PWA service worker",e)));
