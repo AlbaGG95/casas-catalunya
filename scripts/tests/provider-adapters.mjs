@@ -4,7 +4,7 @@ import {isDetailUrl,embeddedDetailPatterns,supportedProviders} from "../lib/prov
 const cases=[
   ["Fotocasa","https://www.fotocasa.es/es/comprar/vivienda/barcelona/190785132/d",true],
   ["Habitaclia","https://www.habitaclia.com/comprar-casa-girona/d",false],
-  ["Habitaclia","https://www.habitaclia.com/comprar/casa/girona/abcdef/d",true],
+  ["Habitaclia","https://www.habitaclia.com/comprar/casa/girona/abcdef/d",false],\n  ["Habitaclia","https://www.habitaclia.com/comprar/vivienda/palafolls/66a476dd-7351-4b07-8168-05324499a3fd/d",true],\n  ["Habitaclia","https://www.habitaclia.com/comprar/chalet/malgrat/niagara-parc-agora-parc/tordera/d",false],
   ["Pisos.com","https://www.pisos.com/comprar/casa-tordera-123456789/",true],
   ["Pisos.com","https://www.pisos.com/venta/casas-barcelona/",false],
   ["Yaencontre","https://www.yaencontre.com/venta/casa/inmueble-59329-112657066",true],
@@ -18,7 +18,7 @@ for(const [provider,url,expected] of cases){
   assert.equal(isDetailUrl(provider,url),expected,provider+" "+url);
 }
 
-assert.ok(supportedProviders().includes("Indomio"));
+const habitacliaEmbedded=embeddedDetailPatterns("Habitaclia");\nassert.ok(habitacliaEmbedded.some(rx=>rx.test("/comprar/vivienda/palafolls/66a476dd-7351-4b07-8168-05324499a3fd/d")));\nassert.ok(habitacliaEmbedded.every(rx=>!rx.test("/comprar/chalet/malgrat/niagara-parc-agora-parc/tordera/d")));\n\nassert.ok(supportedProviders().includes("Indomio"));
 assert.ok(embeddedDetailPatterns("Indomio").some(rx=>rx.test("/anuncios/123456789/")));
 assert.equal(new Set(supportedProviders()).size,7);
 
