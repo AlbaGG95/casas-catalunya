@@ -13,13 +13,18 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <title>Casa Cataluña</title>
   <meta name="description" content="Buscador familiar de casas habitables en Cataluña">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="app">
   <header class="topbar">
     <div class="brand"><div class="logo">CC</div><div><strong>Casa Cataluña</strong><span>Buscador familiar</span></div></div>
-    <div class="header-actions"><button id="familyButton" class="family-button">Conectar familia</button><div class="live"><i></i><span id="updatedAt">Sincronizando…</span></div></div>
+    <div class="header-actions">
+      <button id="alertButton" class="family-button">Activar alertas</button>
+      <button id="familyButton" class="family-button">Conectar familia</button>
+      <div class="live"><i></i><span id="updatedAt">Sincronizando…</span></div>
+    </div>
   </header>
 
   <section class="hero compact">
@@ -61,6 +66,7 @@
     <select id="statusFilter">
       <option value="">Todas compatibles</option>
       <option value="new">Nuevas / detectadas recientemente</option>
+      <option value="since-visit">Nuevas desde mi última visita</option>
       <option value="best">Mejor encaje</option>
       <option value="verified">Documentación verificada</option>
       <option value="independent">Independiente o probable</option>
@@ -70,6 +76,43 @@
     <select id="sortFilter">
       <option value="recent">Más recientes</option><option value="score">Mejor encaje</option><option value="price-asc">Precio ↑</option><option value="price-desc">Precio ↓</option>
     </select>
+  </section>
+
+  <section class="advanced-filters" aria-label="Filtros avanzados">
+    <select id="bedroomFilter">
+      <option value="3">3+ habitaciones</option>
+      <option value="4">4+ habitaciones</option>
+    </select>
+    <select id="driveFilter">
+      <option value="">Cualquier trayecto ≤90 min</option>
+      <option value="60">≤ 60 min aprox.</option>
+      <option value="75">≤ 75 min aprox.</option>
+      <option value="90">≤ 90 min aprox.</option>
+    </select>
+    <select id="confidenceFilter">
+      <option value="">Cualquier confianza válida</option>
+      <option value="medium">Confianza media o alta</option>
+      <option value="high">Solo confianza alta</option>
+    </select>
+    <select id="extraFilter">
+      <option value="">Sin filtro extra</option>
+      <option value="garage">Con garaje</option>
+      <option value="pool">Con piscina</option>
+      <option value="services">Servicios cercanos detectados</option>
+      <option value="mapped">Con ubicación en mapa</option>
+    </select>
+  </section>
+
+  <section class="map-panel">
+    <div class="map-head">
+      <div><span>MAPA</span><h2>Candidatas localizadas</h2></div>
+      <div class="map-head-actions">
+        <span id="mapMeta">Cargando ubicaciones…</span>
+        <button id="toggleMap" class="map-toggle">Ocultar mapa</button>
+      </div>
+    </div>
+    <div id="candidateMap" class="candidate-map" aria-label="Mapa de viviendas candidatas"></div>
+    <p class="map-note">Los pines pueden ser aproximados. Solo se consideran exactos cuando la fuente aporta dirección o referencia catastral suficiente.</p>
   </section>
 
   <div class="section-head">
@@ -89,7 +132,21 @@
 
   <footer>Los favoritos pueden sincronizarse entre dispositivos con el código familiar. El código solo se guarda en cada dispositivo conectado.</footer>
 </div>
+<div id="compareDock" class="compare-dock" hidden>
+  <div><strong id="compareCount">0 seleccionadas</strong><span>Selecciona entre 2 y 4 viviendas.</span></div>
+  <div><button id="clearCompare">Limpiar</button><button id="openCompare" class="primary">Comparar</button></div>
+</div>
+
+<div id="compareModal" class="compare-modal" hidden>
+  <div class="compare-backdrop" data-close-compare></div>
+  <section class="compare-dialog" role="dialog" aria-modal="true" aria-labelledby="compareTitle">
+    <div class="compare-dialog-head"><div><span>COMPARADOR</span><h2 id="compareTitle">Comparar viviendas</h2></div><button data-close-compare aria-label="Cerrar">×</button></div>
+    <div id="compareTableWrap" class="compare-table-wrap"></div>
+  </section>
+</div>
+
 <div id="toast" class="toast" hidden></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script type="module" src="/app.js"></script>
 </body>
 </html>

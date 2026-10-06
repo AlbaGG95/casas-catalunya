@@ -1,4 +1,4 @@
-const CACHE="casa-catalunya-v4-official-v1";
+const CACHE="casa-catalunya-v4-search-v1";
 const SHELL=["/","/index.html","/property.html","/styles.css","/manifest.webmanifest","/icon.svg"];
 
 self.addEventListener("install",e=>e.waitUntil(
@@ -26,4 +26,19 @@ self.addEventListener("fetch",e=>{
       return r;
     }).catch(()=>caches.match(e.request).then(r=>r||caches.match("/")))
   );
+});
+
+self.addEventListener("notificationclick",event=>{
+  event.notification.close();
+  const target=event.notification?.data?.url||"/";
+  event.waitUntil((async()=>{
+    const list=await clients.matchAll({type:"window",includeUncontrolled:true});
+    for(const client of list){
+      if("focus" in client){
+        try{await client.navigate(target)}catch{}
+        return client.focus();
+      }
+    }
+    if(clients.openWindow)return clients.openWindow(target);
+  })());
 });

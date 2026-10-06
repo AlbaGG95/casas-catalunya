@@ -15,7 +15,12 @@ const els={
   sort:$("#sortFilter"),visible:$("#visibleCount"),newCount:$("#newCount"),
   under180:$("#under180Count"),savedCount:$("#savedCount"),updatedAt:$("#updatedAt"),
   lastScan:$("#lastScan"),sourceHealth:$("#sourceHealth"),toast:$("#toast"),
-  loadMore:$("#loadMore"),resultMeta:$("#resultMeta"),familyBtn:$("#familyButton")
+  loadMore:$("#loadMore"),resultMeta:$("#resultMeta"),familyBtn:$("#familyButton"),
+  alertBtn:$("#alertButton"),bedrooms:$("#bedroomFilter"),drive:$("#driveFilter"),
+  confidence:$("#confidenceFilter"),extra:$("#extraFilter"),map:$("#candidateMap"),
+  mapMeta:$("#mapMeta"),toggleMap:$("#toggleMap"),compareDock:$("#compareDock"),
+  compareCount:$("#compareCount"),openCompare:$("#openCompare"),clearCompare:$("#clearCompare"),
+  compareModal:$("#compareModal"),compareWrap:$("#compareTableWrap")
 };
 
 let payload={listings:[],sourceStatus:{}};
@@ -25,6 +30,13 @@ let familySaved=new Set();
 let familyCode=localStorage.getItem("familyCode")||"";
 let realtimeChannel=null;
 let visibleLimit=PAGE_SIZE;
+let candidateMap=null;
+let markerLayer=null;
+let mapHidden=localStorage.getItem("mapHidden")==="1";
+let compareSelected=new Set(JSON.parse(localStorage.getItem("compareHomes")||"[]"));
+const previousVisitAt=localStorage.getItem("lastVisitAt");
+const visitStartedAt=new Date().toISOString();
+localStorage.setItem("lastVisitAt",visitStartedAt);
 
 const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
 const fmt=v=>v?new Intl.DateTimeFormat("es-ES",{dateStyle:"short",timeStyle:"short"}).format(new Date(v)):"—";
@@ -53,6 +65,9 @@ const published48=h=>publishedAge(h)<=48;
 const detectedRecent=h=>!h.publishedAt&&detectedAge(h)<=48;
 const isRecent=h=>publishedRecent(h)||detectedRecent(h);
 const stretch=h=>h.price>TARGET_PRICE&&h.price<=HARD_MAX_PRICE;
+const newSinceVisit=h=>!!previousVisitAt&&new Date(h.firstSeen||0).getTime()>new Date(previousVisitAt).getTime();
+const hasCoords=h=>Number.isFinite(Number(h.latitude))&&Number.isFinite(Number(h.longitude));
+const servicesKnown=h=>(h.nearbyServices||[]).length>0||["likely","confirmed"].includes(h.servicesStatus);
 
 function cleanPlace(value){
   let s=String(value||"").replace(/\bCentro Urbano\b/ig,"").replace(/\bCasco Urbano\b/ig,"").replace(/\s+/g," ").trim();
@@ -98,6 +113,7 @@ function check(t,s){return '<span class="check '+s+'">'+(s==="ok"?"✓ ":s==="pe
 function toast(t){els.toast.textContent=t;els.toast.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>els.toast.hidden=true,4200)}
 
 function freshnessBadge(h){
+  if(newSinceVisit(h))return tag("Nueva desde tu última visita","new");
   if(published48(h))return tag("Publicada ≤48 h","new");
   if(publishedRecent(h))return tag("Publicada esta semana","new");
   if(detectedRecent(h))return tag("Detectada hoy","detected");
@@ -128,7 +144,7 @@ function card(h){
     : "Publicación desconocida · detectado "+fmt(h.firstSeen);
 
   return '<article class="card">'+media+'<div class="card-body">'+
-    '<div class="card-top"><div class="tags">'+ts.join("")+'</div><span class="score" title="Puntuación de encaje, no verificación legal">'+esc(h.score||0)+'/100</span></div>'+
+    '<div class="card-top"><div class="tags">'+ts.join("")+'</div><div class="card-tools"><button class="compare-chip '+(compareSelected.has(h.dbId)?"selected":"")+'" data-compare="'+esc(h.dbId)+'">'+(compareSelected.has(h.dbId)?"✓ Comparar":"+ Comparar")+'</button><span class="score" title="Puntuación de encaje, no verificación legal">'+esc(h.score||0)+'/100</span></div></div>'+
     '<div><div class="price">'+euro(h.price)+(stretch(h)?'<small>margen</small>':"")+'</div><h2>'+esc(h.title)+'</h2><div class="place">'+esc(place)+' · '+esc(h.province||"Cataluña")+'</div></div>'+
     '<div class="features"><span>'+esc(h.bedrooms)+' hab.</span>'+(h.houseM2?'<span>'+esc(h.houseM2)+' m² casa</span>':"")+(h.plotM2?'<span>'+esc(h.plotM2)+' m² parcela</span>':"")+'<span>'+esc(travel)+'</span>'+(h.hasGarage?'<span>Garaje</span>':"")+(h.hasPool?'<span>Piscina</span>':"")+'</div>'+
     '<p>'+esc(h.summary||"Candidata detectada automáticamente.")+'</p>'+
@@ -148,14 +164,27 @@ function card(h){
 function filteredList(){
   let a=dedupeListings((payload.listings||[]).filter(candidate));
   const q=els.search.value.toLowerCase().trim(),p=els.province.value,b=els.budget.value,s=els.status.value;
+  const minBeds=Number(els.bedrooms?.value||3),maxDrive=Number(els.drive?.value||0);
+  const confidence=els.confidence?.value||"",extra=els.extra?.value||"";
 
   if(q)a=a.filter(h=>(h.title+" "+(cleanPlace(h.place)||"")).toLowerCase().includes(q));
   if(p)a=a.filter(h=>h.province===p);
+  a=a.filter(h=>h.bedrooms>=minBeds);
 
   if(b==="180")a=a.filter(h=>h.price<=TARGET_PRICE);
   else if(b==="185"||b==="smart185")a=a.filter(h=>h.price<=HARD_MAX_PRICE);
 
+  if(maxDrive)a=a.filter(h=>h.driveMinutes!=null&&Number(h.driveMinutes)<=maxDrive);
+  if(confidence==="high")a=a.filter(h=>h.dataConfidence==="high");
+  if(confidence==="medium")a=a.filter(h=>["high","medium"].includes(h.dataConfidence));
+
+  if(extra==="garage")a=a.filter(h=>h.hasGarage);
+  if(extra==="pool")a=a.filter(h=>h.hasPool);
+  if(extra==="services")a=a.filter(servicesKnown);
+  if(extra==="mapped")a=a.filter(hasCoords);
+
   if(s==="new")a=a.filter(isRecent);
+  if(s==="since-visit")a=a.filter(newSinceVisit);
   if(s==="best")a=a.filter(h=>(h.score||0)>=84);
   if(s==="verified")a=a.filter(h=>h.status==="verified");
   if(s==="independent")a=a.filter(h=>["confirmed","probable"].includes(h.independentStatus));
@@ -169,6 +198,134 @@ function filteredList(){
   else if(so==="price-asc")a.sort((x,y)=>x.price-y.price);
   else a.sort((x,y)=>y.price-x.price);
   return a;
+}
+
+function initMap(){
+  if(candidateMap||!els.map)return;
+  candidateMap=L.map(els.map,{scrollWheelZoom:false,zoomControl:true}).setView([41.75,1.8],7);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19,
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'
+  }).addTo(candidateMap);
+  markerLayer=L.layerGroup().addTo(candidateMap);
+}
+
+function renderMap(list){
+  if(!els.map)return;
+  els.map.hidden=mapHidden;
+  els.toggleMap.textContent=mapHidden?"Mostrar mapa":"Ocultar mapa";
+  if(mapHidden)return;
+  initMap();
+  markerLayer.clearLayers();
+  const mapped=list.filter(hasCoords);
+  els.mapMeta.textContent=mapped.length+" de "+list.length+" con ubicación";
+  if(!mapped.length){
+    candidateMap.setView([41.75,1.8],7);
+    return;
+  }
+  const bounds=[];
+  for(const h of mapped){
+    const lat=Number(h.latitude),lon=Number(h.longitude);
+    bounds.push([lat,lon]);
+    const precise=["cadastral","exact_address"].includes(h.locationPrecision);
+    const icon=L.divIcon({
+      className:"house-marker-wrap",
+      html:'<span class="house-marker '+(precise?"precise":"approx")+'">'+Math.round(h.price/1000)+'k</span>',
+      iconSize:[44,28],iconAnchor:[22,14]
+    });
+    const popup='<div class="map-popup"><strong>'+esc(euro(h.price))+'</strong><span>'+esc(h.title)+'</span><small>'+esc(cleanPlace(h.place)||h.province||"Cataluña")+' · '+(precise?"ubicación precisa":"ubicación aproximada")+'</small><a href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver ficha</a></div>';
+    L.marker([lat,lon],{icon}).bindPopup(popup,{maxWidth:250}).addTo(markerLayer);
+  }
+  candidateMap.fitBounds(bounds,{padding:[30,30],maxZoom:11});
+  setTimeout(()=>candidateMap.invalidateSize(),0);
+}
+
+function persistCompare(){
+  localStorage.setItem("compareHomes",JSON.stringify([...compareSelected]));
+}
+function updateCompareDock(){
+  const n=compareSelected.size;
+  els.compareDock.hidden=n===0;
+  els.compareCount.textContent=n+" seleccionada"+(n===1?"":"s");
+  els.openCompare.disabled=n<2;
+}
+function toggleCompare(id){
+  if(compareSelected.has(id))compareSelected.delete(id);
+  else{
+    if(compareSelected.size>=4){toast("Puedes comparar un máximo de 4 viviendas.");return}
+    compareSelected.add(id);
+  }
+  persistCompare();
+  render();
+}
+function comparisonValue(h,key){
+  if(key==="price")return euro(h.price);
+  if(key==="bedrooms")return String(h.bedrooms);
+  if(key==="houseM2")return h.houseM2?h.houseM2+" m²":"Pendiente";
+  if(key==="plotM2")return h.plotM2?h.plotM2+" m²":"Pendiente";
+  if(key==="driveMinutes")return h.driveMinutes!=null?Math.round(h.driveMinutes)+" min":"Pendiente";
+  if(key==="independent")return h.independentStatus==="confirmed"?"Confirmada":h.independentStatus==="probable"?"Probable":"Pendiente";
+  if(key==="condition")return h.conditionStatus==="confirmed"?"Para entrar indicado":"Pendiente";
+  if(key==="services")return servicesKnown(h)?"Detectados":"Pendiente";
+  if(key==="confidence")return h.confidenceScore+"/100";
+  if(key==="score")return h.score+"/100";
+  return "—";
+}
+function openCompare(){
+  const homes=[...compareSelected].map(id=>payload.listings.find(h=>h.dbId===id)).filter(Boolean).slice(0,4);
+  if(homes.length<2){toast("Selecciona al menos 2 viviendas.");return}
+  const rows=[
+    ["Precio","price"],["Habitaciones","bedrooms"],["Vivienda","houseM2"],["Parcela","plotM2"],
+    ["Trayecto","driveMinutes"],["Independencia","independent"],["Estado","condition"],
+    ["Servicios","services"],["Confianza de datos","confidence"],["Encaje","score"]
+  ];
+  const head='<tr><th>Dato</th>'+homes.map(h=>'<th><a href="/property.html?id='+encodeURIComponent(h.dbId)+'">'+esc(cleanPlace(h.place)||h.title)+'</a><small>'+esc(euro(h.price))+'</small></th>').join("")+'</tr>';
+  const body=rows.map(([label,key])=>'<tr><th>'+esc(label)+'</th>'+homes.map(h=>'<td>'+esc(comparisonValue(h,key))+'</td>').join("")+'</tr>').join("");
+  els.compareWrap.innerHTML='<table class="compare-table"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+  els.compareModal.hidden=false;
+  document.body.classList.add("modal-open");
+}
+function closeCompare(){
+  els.compareModal.hidden=true;
+  document.body.classList.remove("modal-open");
+}
+
+function updateAlertButton(){
+  if(!els.alertBtn)return;
+  if(!("Notification" in window)){
+    els.alertBtn.hidden=true;
+    return;
+  }
+  const enabled=localStorage.getItem("candidateAlerts")==="1"&&Notification.permission==="granted";
+  els.alertBtn.textContent=enabled?"✓ Alertas activas":"Activar alertas";
+  els.alertBtn.classList.toggle("connected",enabled);
+}
+async function enableAlerts(){
+  if(!("Notification" in window)){toast("Este navegador no admite notificaciones.");return}
+  if(Notification.permission==="denied"){toast("Las notificaciones están bloqueadas en el navegador.");return}
+  if(localStorage.getItem("candidateAlerts")==="1"&&Notification.permission==="granted"){
+    localStorage.removeItem("candidateAlerts");
+    updateAlertButton();
+    toast("Alertas desactivadas en este dispositivo.");
+    return;
+  }
+  const permission=await Notification.requestPermission();
+  if(permission==="granted"){
+    localStorage.setItem("candidateAlerts","1");
+    updateAlertButton();
+    toast("Alertas activadas mientras Casa Cataluña esté abierta o instalada.");
+  }
+}
+async function notifyHomes(homes){
+  if(!homes.length||localStorage.getItem("candidateAlerts")!=="1"||Notification.permission!=="granted")return;
+  const h=homes[0];
+  const title=homes.length===1?"Nueva candidata":"Nuevas candidatas: "+homes.length;
+  const body=homes.length===1?(euro(h.price)+" · "+h.bedrooms+" hab. · "+(cleanPlace(h.place)||h.province)):"Hay "+homes.length+" viviendas nuevas que cumplen los filtros duros.";
+  try{
+    const reg=await navigator.serviceWorker?.ready;
+    if(reg)await reg.showNotification(title,{body,icon:"/icon.svg",tag:"new-candidates",data:{url:homes.length===1?"/property.html?id="+h.dbId:"/"}});
+    else new Notification(title,{body});
+  }catch{try{new Notification(title,{body})}catch{}}
 }
 
 function render(){
@@ -189,7 +346,9 @@ function render(){
     els.empty.hidden=false;
     els.empty.textContent="Sincronizando el catálogo seguro por primera vez.";
   }else if(!a.length){
-    els.empty.textContent="No hay viviendas que coincidan con estos filtros. El rastreador seguirá buscando.";
+    els.empty.textContent=els.status.value==="since-visit"&&!previousVisitAt
+      ?"Esta es tu primera visita en este dispositivo. Ya hemos guardado el punto de referencia; en la próxima visita podrás ver solo las viviendas nuevas."
+      :"No hay viviendas que coincidan con estos filtros. El rastreador seguirá buscando.";
   }
 
   els.resultMeta.textContent=a.length>shown.length
@@ -204,7 +363,10 @@ function render(){
   const ok=st.filter(x=>x?.status==="ok").length;
   const down=st.filter(x=>x?.status==="down").length;
   els.sourceHealth.textContent=st.length?(ok+" activas"+(down?" · "+down+" bloqueadas":"")):"—";
+  renderMap(a);
+  updateCompareDock();
 
+  document.querySelectorAll("[data-compare]").forEach(x=>x.onclick=()=>toggleCompare(x.dataset.compare));
   document.querySelectorAll("[data-save]").forEach(x=>x.onclick=async()=>{
     const id=x.dataset.save,dbId=x.dataset.db;
     if(familyCode){
@@ -263,6 +425,10 @@ function transformProperty(row){
     priceConfidence:row.price_confidence,
     dataConfidence:row.data_confidence,
     confidenceScore:Number(row.confidence_score)||0,
+    latitude:row.latitude,
+    longitude:row.longitude,
+    locationPrecision:row.location_precision||"unknown",
+    nearbyServices:row.nearby_services||[],
   };
 }
 
@@ -270,7 +436,7 @@ async function load(silent=false){
   try{
     const [{data:rows,error},{data:health,error:healthError}]=await Promise.all([
       db.from("properties")
-        .select("*, listing_sources(provider,url,image_url,published_at,active)")
+        .select("*, listing_sources(provider,url,image_url,published_at,active), nearby_services(category,name,distance_m,latitude,longitude,checked_at)")
         .in("status",["candidate","verified"])
         .lte("price",HARD_MAX_PRICE)
         .gte("bedrooms",3)
@@ -281,10 +447,20 @@ async function load(silent=false){
     if(healthError)throw healthError;
 
     const listings=(rows||[]).map(transformProperty).filter(candidate);
+    const validCompareIds=new Set(listings.map(x=>x.dbId));
+    const cleanedCompare=new Set([...compareSelected].filter(id=>validCompareIds.has(id)));
+    if(cleanedCompare.size!==compareSelected.size){
+      compareSelected=cleanedCompare;
+      persistCompare();
+    }
     const ids=new Set(listings.map(x=>x.id));
     if(silent&&known.size){
       const added=[...ids].filter(x=>!known.has(x));
-      if(added.length)toast("🏠 "+added.length+" nueva"+(added.length>1?"s":"")+" candidata"+(added.length>1?"s":""));
+      if(added.length){
+        const homes=listings.filter(x=>added.includes(x.id));
+        toast("🏠 "+added.length+" nueva"+(added.length>1?"s":"")+" candidata"+(added.length>1?"s":""));
+        notifyHomes(homes);
+      }
     }
     known=ids;
 
@@ -344,17 +520,30 @@ function subscribeRealtime(){
   realtimeChannel=db.channel("casas-catalunya-live")
     .on("postgres_changes",{event:"*",schema:"public",table:"properties"},()=>load(true))
     .on("postgres_changes",{event:"*",schema:"public",table:"listing_sources"},()=>load(true))
+    .on("postgres_changes",{event:"*",schema:"public",table:"nearby_services"},()=>load(false))
     .on("postgres_changes",{event:"*",schema:"public",table:"source_health"},()=>load(false))
     .subscribe();
 }
 
-[els.search,els.province,els.budget,els.status,els.sort].forEach(x=>x.addEventListener(x===els.search?"input":"change",()=>{
+[els.search,els.province,els.budget,els.status,els.sort,els.bedrooms,els.drive,els.confidence,els.extra].filter(Boolean).forEach(x=>x.addEventListener(x===els.search?"input":"change",()=>{
   visibleLimit=PAGE_SIZE;
   render();
 }));
 els.loadMore.addEventListener("click",()=>{visibleLimit+=PAGE_SIZE;render()});
 els.familyBtn?.addEventListener("click",connectFamily);
+els.alertBtn?.addEventListener("click",enableAlerts);
+els.toggleMap?.addEventListener("click",()=>{
+  mapHidden=!mapHidden;
+  localStorage.setItem("mapHidden",mapHidden?"1":"0");
+  render();
+});
+els.clearCompare?.addEventListener("click",()=>{compareSelected.clear();persistCompare();render()});
+els.openCompare?.addEventListener("click",openCompare);
+document.querySelectorAll("[data-close-compare]").forEach(x=>x.addEventListener("click",closeCompare));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!els.compareModal.hidden)closeCompare()});
 updateFamilyButton();
+updateAlertButton();
+updateCompareDock();
 
 load().then(async()=>{
   subscribeRealtime();
