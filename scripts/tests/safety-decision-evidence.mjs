@@ -63,6 +63,8 @@ assert.match(migration,/listing_security_text_excerpt_size/);
 assert.equal((migration.match(/alter table public\.listing_security_text enable row level security/g)||[]).length,1);
 assert.equal((migration.match(/create index if not exists listing_security_text_property_idx/g)||[]).length,1);
 assert.ok(migration.indexOf(");")<migration.indexOf("alter table public.listing_security_text"));
+assert.match(migration,/update public\.properties[\s\S]*#- '\\{safety,evidence\\}'/);
+assert.match(migration,/update public\.listing_sources[\s\S]*#- '\\{condition,evidenceDetail\\}'/);
 
 assert.match(ingest,/evaluateSafetyDocument/);
 assert.match(ingest,/evidence_excerpt:/);
