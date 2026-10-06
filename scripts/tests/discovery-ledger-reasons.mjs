@@ -27,4 +27,28 @@ assert.match(
   "Completion must keep the accepted/rejected/error state contract"
 );
 
+assert.match(
+  edge,
+  /selectByUrls\(supabase,"listing_security_text","canonical_url",urls\)/,
+  "Discovery planning must know which listings already have private security text"
+);
+
+assert.match(
+  edge,
+  /const needsSecurityBackfill=!!source&&!securityMap\.has\(item\.url\)/,
+  "Existing listings without security text must be marked for backfill"
+);
+
+assert.match(
+  edge,
+  /nowMs-checkedMs<knownFreshMs&&!needsSecurityBackfill/,
+  "Freshness must not suppress the one-time security-text backfill"
+);
+
+assert.match(
+  edge,
+  /a\.needsSecurityBackfill!==b\.needsSecurityBackfill/,
+  "Security backfill must be prioritised before normal discovery work"
+);
+
 console.log("Discovery ledger rejection reasons contract: OK");
