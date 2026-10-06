@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "update:listings": "node scripts/update-listings.mjs",
-    "test": "node scripts/tests/regression.mjs && node scripts/tests/official-identity.mjs && node --check scripts/update-listings.mjs && node --check app.js && node --check property.js"
+    "test": "node scripts/tests/regression.mjs && node scripts/tests/official-identity.mjs && node --check scripts/update-listings.mjs && node --check app.js && node --check property.js && node --check sw.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0"
