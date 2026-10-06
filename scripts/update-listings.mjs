@@ -5,6 +5,7 @@ import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
 import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
 import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
+import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -136,15 +137,6 @@ function pageUrl(src,page){
   }
   return src.base;
 }
-function isDetail(provider,url){
-  if(provider==="Fotocasa")return /\/es\/comprar\/vivienda\//i.test(url);
-  if(provider==="Habitaclia")return /\/comprar\/(?:vivienda|casa|chalet)\//i.test(url)&&/\/d(?:\?|$)/i.test(url);
-  if(provider==="Pisos.com")return /\/comprar\//i.test(url)&&!/\/venta\//i.test(url);
-  if(provider==="Yaencontre")return /\/venta\/casa\/inmueble-\d+-\d+/i.test(url);
-  if(provider==="Servihabitat")return /\/es\/venta\/vivienda-casa\/.+\/\d+\/?$/i.test(url);
-  if(provider==="Idealista")return /\/inmueble\/\d+\/?/i.test(url);
-  return false;
-}
 function cardTextFor($,a){
   const node=$(a).closest("article,li,[class*='card'],[class*='Card']").first();
   const text=clean((node.length?node:$(a).parent()).text());
@@ -168,28 +160,16 @@ function discover(src,base,html){
   const found=new Map();
   $("a[href]").each((_,a)=>{
     const u=abs(base,$(a).attr("href")||"");
-    if(!u||!isDetail(src.provider,u))return;
+    if(!u||!isDetailUrl(src.provider,u))return;
     const text=cardTextFor($,a);
     if(listPrefilter(text))found.set(u,{url:u,listText:text});
   });
-  const patterns=src.provider==="Fotocasa"
-    ? [/https?:\\?\/\\?\/www\.fotocasa\.es\\?\/es\\?\/comprar\\?\/vivienda\\?\/[^"'<>\s]+/gi,/\/es\/comprar\/vivienda\/[^"'<>\s]+/gi]
-    : src.provider==="Habitaclia"
-    ? [/https?:\\?\/\\?\/www\.habitaclia\.com\\?\/comprar\\?\/(?:vivienda|casa|chalet)\\?\/[^"'<>\s]+?\\?\/d/gi,/\/comprar\/(?:vivienda|casa|chalet)\/[^"'<>\s]+?\/d/gi]
-    : src.provider==="Indomio"
-    ? [/https?:\\?\/\\?\/www\.indomio\.es\\?\/anuncios\\?\/\d+\\?\/?/gi,/\/anuncios\/\d+\/?/gi]
-    : src.provider==="Yaencontre"
-    ? [/https?:\\?\/\\?\/www\.yaencontre\.com\\?\/venta\\?\/casa\\?\/inmueble-\d+-\d+/gi,/\/venta\/casa\/inmueble-\d+-\d+/gi]
-    : src.provider==="Servihabitat"
-    ? [/https?:\\?\/\\?\/www\.servihabitat\.com\\?\/es\\?\/venta\\?\/vivienda-casa\\?\/[^"'<>\s]+\\?\/\d+/gi,/\/es\/venta\/vivienda-casa\/[^"'<>\s]+\/\d+/gi]
-    : src.provider==="Idealista"
-    ? [/https?:\\?\/\\?\/(?:www\.)?idealista\.com\\?\/inmueble\\?\/\d+\\?\/?/gi,/\/inmueble\/\d+\/?/gi]
-    : [/https?:\\?\/\\?\/www\.pisos\.com\\?\/comprar\\?\/[^"'<>\s]+/gi,/\/comprar\/[^"'<>\s]+/gi];
+  const patterns=embeddedDetailPatterns(src.provider);
   for(const rx of patterns){
     for(const m of html.matchAll(rx)){
       const raw=m[0].replace(/\\\//g,"/").replace(/\\u002F/g,"/");
       const u=abs(base,raw);
-      if(u&&isDetail(src.provider,u)&&!found.has(u))found.set(u,{url:u,listText:""});
+      if(u&&isDetailUrl(src.provider,u)&&!found.has(u))found.set(u,{url:u,listText:""});
     }
   }
   return [...found.values()].slice(0,140);

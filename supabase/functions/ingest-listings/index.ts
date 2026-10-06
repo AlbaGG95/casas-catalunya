@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
 import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { nextSourceHealthState } from "./source-health.mjs";
 
 const ALLOWED_REPO = "AlbaGG95/casas-catalunya";
 const ALLOWED_REF = "refs/heads/main";
@@ -76,9 +77,10 @@ function aggregateSourceStatus(sourceStatus: Record<string, any>) {
   for (const [key, s] of Object.entries(sourceStatus || {})) {
     const provider = String(key).split(" ")[0];
     const cur = byProvider.get(provider) || {
-      discovered: 0, accepted: 0, rejected: 0, priceConflicts: 0, ok: true, errors: []
+      pages: 0, discovered: 0, accepted: 0, rejected: 0, priceConflicts: 0, ok: true, errors: []
     };
     const v: any = s;
+    cur.pages += Number(v?.pages || 0);
     cur.discovered += Number(v?.discovered || 0);
     cur.accepted += Number(v?.accepted || 0);
     const rejected = v?.rejected || {};
@@ -119,7 +121,7 @@ Deno.serve(async (req) => {
 
     const { data: priorHealth, error: healthReadError } = providers.length
       ? await supabase.from("source_health")
-          .select("provider,status,ingestion_enabled,conflict_count,consecutive_failures,quarantine_reason,last_conflict_at,last_success_at,auto_disabled_at")
+          .select("provider,status,ingestion_enabled,conflict_count,consecutive_failures,quarantine_reason,last_conflict_at,last_success_at,auto_disabled_at,cooldown_until,last_recovered_at,recovery_count")
           .in("provider", providers)
       : { data: [], error: null };
     if (healthReadError) throw healthReadError;
@@ -129,42 +131,11 @@ Deno.serve(async (req) => {
     const healthRows:any[] = [];
 
     for (const provider of providers) {
-      const s = sourceSummary.get(provider) || { discovered:0,accepted:0,rejected:0,priceConflicts:0,ok:true,errors:[] };
+      const s = sourceSummary.get(provider) || { pages:0,discovered:0,accepted:0,rejected:0,priceConflicts:0,ok:true,errors:[] };
       const prev:any = priorHealthMap.get(provider) || {};
-      const previousFailures = Number(prev.consecutive_failures || 0);
-      const failures = s.ok ? 0 : previousFailures + 1;
-      const conflictRate = s.discovered > 0 ? s.priceConflicts / s.discovered : 0;
-      const priceKill = s.priceConflicts >= 3 || (s.discovered >= 10 && conflictRate >= 0.20);
-      const failureKill = failures >= 3;
-      const alreadyDisabled = prev.ingestion_enabled === false || prev.status === "quarantined";
-      const autoDisabled = alreadyDisabled || priceKill || failureKill;
-
-      if (autoDisabled) disabledProviders.add(provider);
-
-      const reason = alreadyDisabled
-        ? (prev.quarantine_reason || "manual_or_previous_quarantine")
-        : priceKill
-          ? `price_conflicts:${s.priceConflicts}/${s.discovered}`
-          : failureKill
-            ? `consecutive_failures:${failures}`
-            : null;
-
-      healthRows.push({
-        provider,
-        last_run_at: generatedAt,
-        last_success_at: s.ok ? generatedAt : (prev.last_success_at || null),
-        status: autoDisabled ? "quarantined" : (s.ok ? "ok" : (s.discovered > 0 ? "degraded" : "down")),
-        discovered_count: s.discovered,
-        accepted_count: s.accepted,
-        rejected_count: s.rejected,
-        error_message: s.errors.length ? s.errors.join("; ").slice(0, 500) : null,
-        ingestion_enabled: !autoDisabled,
-        conflict_count: Number(prev.conflict_count || 0) + Number(s.priceConflicts || 0),
-        consecutive_failures: failures,
-        auto_disabled_at: autoDisabled ? (prev.auto_disabled_at || generatedAt) : null,
-        quarantine_reason: autoDisabled ? reason : null,
-        last_conflict_at: s.priceConflicts > 0 ? generatedAt : (prev.last_conflict_at || null),
-      });
+      const state = nextSourceHealthState(provider,s,prev,generatedAt);
+      if (state.disabled) disabledProviders.add(provider);
+      healthRows.push(state.row);
     }
 
     if (healthRows.length) {
