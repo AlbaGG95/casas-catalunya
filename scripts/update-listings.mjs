@@ -2,11 +2,12 @@ import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import * as cheerio from "cheerio";
 import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
-import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
-import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
+import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
+import {evaluateSafetyText,evaluateSafetyDocument,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
 import {buildSourceDefinitions,sourceDefinitionKey} from "./lib/source-catalog.mjs";
+import {allJsonLd,extractListingSecurityText,relevantText,stripPrivateListingFields} from "./lib/listing-security-text.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -17,7 +18,6 @@ const INCREMENTAL_ONLY=(process.env.INCREMENTAL_ONLY||"false")==="true";
 const OUTPUT_PATH=process.env.OUTPUT_PATH||"data/listings.json";
 const PIPELINE_PHASE=(process.env.PIPELINE_PHASE||"legacy").trim().toLowerCase();
 const PLAN_PATH=process.env.PLAN_PATH||"data/plan.json";
-const SOFT_PRICE=180000;
 const ORIGIN={lat:41.4247,lon:2.1647,label:"08032 Barcelona"};
 const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://github.com/AlbaGG95/casas-catalunya)";
 const MAX_DETAILS=MODE==="deep"?1600:360;
@@ -131,40 +131,6 @@ function discover(src,base,html){
   }
   return [...found.values()].slice(0,140);
 }
-function allJsonLd($){
-  const items=[];
-  $('script[type="application/ld+json"]').each((_,s)=>{
-    try{
-      const v=JSON.parse($(s).text());
-      const walk=x=>{
-        if(!x)return;
-        if(Array.isArray(x))return x.forEach(walk);
-        if(typeof x==="object"){items.push(x);Object.values(x).forEach(walk)}
-      };
-      walk(v);
-    }catch{}
-  });
-  return items;
-}
-function relevantText($,items){
-  const chunks=[];
-  const title=clean($("h1").first().text()||$("title").text());
-  const meta=clean($('meta[name="description"]').attr("content"));
-  if(title)chunks.push(title);
-  if(meta)chunks.push(meta);
-  for(const x of items){
-    for(const v of [x?.description,x?.headline,x?.name]){
-      if(typeof v==="string"&&v.length>20)chunks.push(clean(v));
-    }
-  }
-  // Clone the central content and remove navigation, related-listing carousels and footers.
-  const root=$("main").first().length?$("main").first().clone():$("body").clone();
-  root.find("nav,footer,header,aside,script,style,noscript,[class*='related' i],[class*='similar' i],[class*='recommend' i],[class*='carousel' i],[class*='suggest' i]").remove();
-  const mainText=clean(root.text());
-  if(mainText)chunks.push(mainText.slice(0,22000));
-  return clean(chunks.join(" "));
-}
-
 function extractBedrooms(text,items){
   for(const x of items){
     for(const v of [x.numberOfRooms,x.numberOfBedrooms,x.numberOfBedroomsTotal,x.bedrooms]){
@@ -379,7 +345,7 @@ function confidenceOf(x){
 
 function scoreBreakdownOf(x,text){
   const parts=[{key:"base",label:"Base de encaje",points:28}];
-  parts.push({key:"budget",label:x.price<=SOFT_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–185k",points:x.price<=SOFT_PRICE?12:4});
+  parts.push({key:"budget",label:x.price<=PREFERRED_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–190k",points:x.price<=PREFERRED_PRICE?12:4});
   parts.push({key:"bedrooms",label:x.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:x.bedrooms>=4?7:4});
   parts.push({
     key:"independent",
@@ -446,8 +412,15 @@ async function enrichTravel(listing,cache){
 function parseDetail(src,url,html,now){
   const $=cheerio.load(html);
   const items=allJsonLd($);
-  const text=relevantText($,items);
-  const safety=evaluateSafetyText(text);
+  const securityText=extractListingSecurityText($,items);
+  const text=securityText.safetyText;
+  const safety=evaluateSafetyDocument(securityText);
+  securityText.decisionEvidence={
+    decision:safety.decision,
+    code:safety.code,
+    reason:safety.reason,
+    ...(safety.evidenceDetail||{})
+  };
   if(safety.decision===SAFETY_DECISIONS.REJECT)return {reject:"safety:"+safety.code,safety};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
   if(!POSITIVE.garden.test(text))return {reject:"sin jardín/parcela detectada"};
@@ -494,7 +467,8 @@ function parseDetail(src,url,html,now){
     cadastralRef,
     locationPrecision,
     hasGarage:POSITIVE.garage.test(text),hasPool:POSITIVE.pool.test(text),
-    stretchBudget:price>SOFT_PRICE,score:0,
+    stretchBudget:price>PREFERRED_PRICE,score:0,
+    securityText:{...securityText,capturedAt:now},
     evidence:{
       price:{evidence:priceInfo.evidence,confidence:priceInfo.confidence,value:price},
       bedrooms:{confidence:items.some(x=>x?.numberOfRooms||x?.numberOfBedrooms||x?.numberOfBedroomsTotal||x?.bedrooms)?"high":"medium",value:bedrooms},
@@ -626,7 +600,7 @@ async function runClassificationPhase(){
         const reason=parsed.reject||"descartada";
         status.rejected[reason]=(status.rejected[reason]||0)+1;
         rejectionTotals[reason]=(rejectionTotals[reason]||0)+1;
-        pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason});
+        pipelineResults.push({propertyId:item.propertyId||null,revalidation:!!item.revalidation,url:item.url,provider:src.provider,province:src.province,kind:src.kind,outcome:"rejected",reason,safetyEvidence:parsed.safety?.evidenceDetail?{code:parsed.safety.code,reason:parsed.safety.reason,...parsed.safety.evidenceDetail}:null});
       }else{
         let listing=await enrichTravel(parsed.listing,geocache);
         if(listing.travelStatus==="too_far"){
@@ -661,15 +635,15 @@ async function runClassificationPhase(){
     pipelinePhase:"classify",
     revalidation:!!plan.revalidation,
     rules:{
-      preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
+      preferredMaxPrice:PREFERRED_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
       gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
       condition:"ready_to_live",origin:ORIGIN.label
     },
     stats:{
       active:listings.length,
       recent:listings.filter(x=>x.freshnessStatus==="recent").length,
-      under180:listings.filter(x=>x.price<=SOFT_PRICE).length,
-      stretch:listings.filter(x=>x.price>SOFT_PRICE).length,
+      under180:listings.filter(x=>x.price<=PREFERRED_PRICE).length,
+      stretch:listings.filter(x=>x.price>PREFERRED_PRICE).length,
       checkedDetails:items.length,
       rejectionTotals
     },
@@ -754,8 +728,8 @@ async function main(){
 
   for(const old of revalidate){
     try{
-      const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),text=relevantText($,items);
-      const safety=evaluateSafetyText(text);
+      const html=await fetchHtml(old.url),$=cheerio.load(html),items=allJsonLd($),securityText=extractListingSecurityText($,items),text=securityText.safetyText;
+      const safety=evaluateSafetyDocument(securityText);
       if(isUnavailable(text)||safety.decision===SAFETY_DECISIONS.REJECT){
         found.set(old.url,{...old,active:false,lastChecked:now,removalReason:isUnavailable(text)?"retirada/reservada":"safety:"+safety.code});
       }else{
@@ -802,20 +776,20 @@ async function main(){
     generatedAt:now,
     scanMode:MODE,
     rules:{
-      preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
+      preferredMaxPrice:PREFERRED_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
       gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
       condition:"ready_to_live",origin:ORIGIN.label
     },
     stats:{
       active:listings.filter(x=>x.active).length,
       recent:listings.filter(x=>x.active&&x.freshnessStatus==="recent").length,
-      under180:listings.filter(x=>x.active&&x.price<=SOFT_PRICE).length,
-      stretch:listings.filter(x=>x.active&&x.price>SOFT_PRICE).length,
+      under180:listings.filter(x=>x.active&&x.price<=PREFERRED_PRICE).length,
+      stretch:listings.filter(x=>x.active&&x.price>PREFERRED_PRICE).length,
       checkedDetails:MAX_DETAILS-detailBudget,
       rejectionTotals
     },
     sourceStatus,
-    listings
+    listings:listings.map(stripPrivateListingFields)
   };
   await fs.mkdir(new URL("../data/",import.meta.url),{recursive:true});
   await fs.writeFile(OUTPUT_PATH,JSON.stringify(out,null,2)+"\n");

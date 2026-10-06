@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const cors={
   "Access-Control-Allow-Origin":"*",
@@ -45,8 +46,8 @@ Deno.serve(async(req)=>{
     const review=active.filter((p:any)=>p.safety_decision==="REVIEW");
     const rejected=(properties||[]).filter((p:any)=>p.status==="quarantine"&&p.safety_decision==="REJECT");
     const withdrawn=(properties||[]).filter((p:any)=>p.status==="withdrawn");
-    const overBudget=active.filter((p:any)=>Number(p.price)>185000);
-    const underBedrooms=active.filter((p:any)=>Number(p.bedrooms)<3);
+    const overBudget=active.filter((p:any)=>Number(p.price)>MAX_PRICE);
+    const underBedrooms=active.filter((p:any)=>Number(p.bedrooms)<MIN_BEDROOMS);
     const stale=active.filter((p:any)=>{
       const ref=p.last_revalidation_at||p.last_seen;
       return !ref||now-new Date(ref).getTime()>4*24*3600000;
@@ -109,7 +110,7 @@ Deno.serve(async(req)=>{
         underBedroomMinimum:underBedrooms.length
       },
       invariants:{
-        budgetOk:overBudget.length===0&&maxVisiblePrice<=185000,
+        budgetOk:overBudget.length===0&&maxVisiblePrice<=MAX_PRICE,
         bedroomsOk:underBedrooms.length===0,
         rejectLeakOk:active.every((p:any)=>p.safety_decision!=="REJECT")
       },

@@ -34,6 +34,18 @@ function chunks<T>(items:T[],size=80){
   return out;
 }
 
+function rejectionAuditText(x:any,outcome:string){
+  const base=String(x?.reason||(outcome==="error"?"detail_error":"rejected")).trim();
+  const detail=x?.safetyEvidence;
+  if(!detail||typeof detail!=="object")return base.slice(0,500);
+  const source=String(detail.source||"").trim();
+  const match=String(detail.match||"").trim();
+  const excerpt=String(detail.excerpt||"").replace(/\s+/g," ").trim();
+  const evidence=[source&&`source=${source}`,match&&`match=${match}`,excerpt&&`excerpt=${excerpt}`]
+    .filter(Boolean).join(" | ");
+  return (evidence?`${base} | ${evidence}`:base).slice(0,500);
+}
+
 async function selectByUrls(supabase:any,table:string,columns:string,urls:string[],extra?:(q:any)=>any){
   const all:any[]=[];
   for(const part of chunks(urls)){
@@ -79,7 +91,7 @@ Deno.serve(async(req)=>{
           last_fetched_at:now,
           fetch_count:Number(old.fetch_count||0)+1,
           state:outcome,
-          last_error:outcome==="accepted"?null:String(x?.reason||(outcome==="error"?"detail_error":"rejected")).slice(0,500)
+          last_error:outcome==="accepted"?null:rejectionAuditText(x,outcome)
         };
       }).filter((x:any)=>x.canonical_url);
 
@@ -105,18 +117,20 @@ Deno.serve(async(req)=>{
     const urls=[...byUrl.keys()];
     if(!urls.length)return Response.json({ok:true,discovered:0,planned:0,items:[],sourceStatus,scanMode,generatedAt});
 
-    const [ledger,sources,recentRejections]=await Promise.all([
+    const [ledger,sources,recentRejections,securityRows]=await Promise.all([
       selectByUrls(supabase,"listing_discovery","canonical_url,last_planned_at,last_fetched_at,state,fetch_count",urls),
       selectByUrls(supabase,"listing_sources","canonical_url,last_checked,active",urls),
       selectByUrls(
         supabase,"rejections","canonical_url,detected_at,reason",urls,
         q=>q.gte("detected_at",new Date(Date.now()-48*3600000).toISOString())
-      )
+      ),
+      selectByUrls(supabase,"listing_security_text","canonical_url",urls)
     ]);
 
     const ledgerMap=new Map(ledger.map((x:any)=>[x.canonical_url,x]));
     const sourceMap=new Map(sources.map((x:any)=>[x.canonical_url,x]));
     const rejectionMap=new Map(recentRejections.map((x:any)=>[x.canonical_url,x]));
+    const securityMap=new Set(securityRows.map((x:any)=>x.canonical_url));
 
     const seenRows=items.map((x:any)=>({
       canonical_url:x.url,
@@ -143,8 +157,9 @@ Deno.serve(async(req)=>{
 
       if(reject)continue;
 
+      const needsSecurityBackfill=!!source&&!securityMap.has(item.url);
       const checkedMs=source?.last_checked?new Date(source.last_checked).getTime():0;
-      if(source&&checkedMs&&nowMs-checkedMs<knownFreshMs)continue;
+      if(source&&checkedMs&&nowMs-checkedMs<knownFreshMs&&!needsSecurityBackfill)continue;
 
       const fetchedMs=old?.last_fetched_at?new Date(old.last_fetched_at).getTime():0;
       if(old?.state==="rejected"&&fetchedMs&&nowMs-fetchedMs<48*3600000)continue;
@@ -156,11 +171,13 @@ Deno.serve(async(req)=>{
       eligible.push({
         ...item,
         isNew:!old&&!source,
+        needsSecurityBackfill,
         lastFetchedAt:old?.last_fetched_at||source?.last_checked||null
       });
     }
 
     eligible.sort((a,b)=>{
+      if(a.needsSecurityBackfill!==b.needsSecurityBackfill)return a.needsSecurityBackfill?-1:1;
       if(a.isNew!==b.isNew)return a.isNew?-1:1;
       return new Date(a.lastFetchedAt||0).getTime()-new Date(b.lastFetchedAt||0).getTime();
     });

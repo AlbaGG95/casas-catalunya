@@ -23,7 +23,7 @@ assert.ok(barcelonaHabitaclia.every(x=>x.pages===12));
 const pisos=buildSourceDefinitions({mode:"recent",scanProvider:"Pisos.com",scanProvince:"Girona"});
 assert.equal(pisos.length,1);
 assert.equal(pisos[0].pages,4);
-assert.match(pisos[0].base,/hasta-185000/);
+assert.match(pisos[0].base,/hasta-190000/);
 
 const ya=buildSourceDefinitions({mode:"recent",scanProvider:"Yaencontre",scanProvince:"Lleida"});
 assert.equal(ya.length,2);

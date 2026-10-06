@@ -14,8 +14,10 @@
   <title>Ficha de vivienda · Casa Cataluña</title>
   <meta name="description" content="Ficha de análisis de una vivienda candidata en Casa Cataluña">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/accessibility.css">
 </head>
 <body>
+<a class="skip-link" href="#propertyDetail">Saltar al contenido de la vivienda</a>
 <div class="app detail-app">
   <header class="topbar">
     <a class="brand brand-link" href="/" aria-label="Volver al buscador">
@@ -24,13 +26,13 @@
     </a>
     <div class="header-actions">
       <a class="secondary-link" href="/">← Volver a resultados</a>
-      <div class="live"><i></i><span id="detailUpdatedAt">Cargando…</span></div>
+      <div class="live"><i aria-hidden="true"></i><span id="detailUpdatedAt" role="status" aria-live="polite">Cargando…</span></div>
     </div>
   </header>
 
-  <div id="detailError" class="empty detail-error" hidden></div>
+  <div id="detailError" class="empty detail-error" role="alert" hidden></div>
 
-  <main id="propertyDetail" hidden>
+  <main id="propertyDetail" tabindex="-1" hidden>
     <section class="detail-hero">
       <div id="detailMedia" class="detail-media"></div>
       <div class="detail-summary">
@@ -41,23 +43,23 @@
         <p id="detailDescription" class="detail-description"></p>
 
         <div class="detail-actions">
-          <button id="detailSave" class="detail-action secondary">☆ Guardar</button>
+          <button id="detailSave" class="detail-action secondary" type="button">☆ Guardar</button>
           <a id="primarySourceLink" class="detail-action primary" href="#" target="_blank" rel="noopener noreferrer">Ver anuncio original</a>
         </div>
 
         <div class="detail-score-grid">
           <article>
-            <span>Encaje</span>
+            <span>Coincide con tu búsqueda</span>
             <strong id="fitScore">—</strong>
-            <small>Puntuación según tus criterios</small>
+            <small>Cuánto encaja con lo que buscas</small>
           </article>
           <article>
-            <span>Confianza de datos</span>
+            <span>Información disponible</span>
             <strong id="confidenceScore">—</strong>
             <small id="confidenceLabel">—</small>
           </article>
           <article>
-            <span>Última revalidación</span>
+            <span>Última revisión</span>
             <strong id="verifiedAt">—</strong>
             <small>Datos del anuncio</small>
           </article>
@@ -76,23 +78,23 @@
 
         <section class="detail-panel">
           <div class="detail-panel-head">
-            <div><span>DECISIÓN</span><h2>Por qué encaja</h2></div>
-            <p>El score mide encaje; no sustituye comprobaciones legales.</p>
+            <div><span>POR QUÉ PUEDE ENCAJAR</span><h2>Lo que cumple de tu búsqueda</h2></div>
+            <p>Esta puntuación ayuda a ordenar las casas. No sustituye las comprobaciones antes de comprar.</p>
           </div>
           <div id="scoreBreakdown" class="score-breakdown"></div>
         </section>
 
         <section class="detail-panel">
           <div class="detail-panel-head">
-            <div><span>CALIDAD DEL DATO</span><h2>Evidencia y confianza</h2></div>
-            <p>Se distingue entre confirmado, probable y pendiente.</p>
+            <div><span>QUÉ SABEMOS</span><h2>Datos confirmados y pendientes</h2></div>
+            <p>Indicamos claramente qué sabemos y qué falta por confirmar.</p>
           </div>
           <div id="evidenceGrid" class="evidence-grid"></div>
         </section>
 
         <section class="detail-panel">
           <div class="detail-panel-head">
-            <div><span>FUENTES OFICIALES</span><h2>Comprobaciones públicas</h2></div>
+            <div><span>COMPROBACIONES</span><h2>Documentación y datos oficiales</h2></div>
             <p>Catastro e ICAEN se verifican automáticamente solo cuando hay referencia catastral exacta. MUC, ACA y cédula no se marcan en verde sin revisión fiable.</p>
           </div>
           <div id="officialIdentity" class="official-identity"></div>
@@ -126,7 +128,7 @@
         <section class="detail-panel family-workspace-panel">
           <div class="detail-panel-head">
             <div><span>FAMILIA</span><h2>Seguimiento compartido</h2></div>
-            <button id="familyConnectDetail" class="family-inline-button">Conectar</button>
+            <button id="familyConnectDetail" class="family-inline-button" type="button">Conectar</button>
           </div>
 
           <div id="familyDisconnected" class="family-empty">
@@ -159,7 +161,7 @@
 
             <label id="familyOfferField" class="family-field">
               <span>Importe de oferta</span>
-              <input id="familyOfferAmount" type="number" min="1" max="185000" step="500" placeholder="Ej. 180000">
+              <input id="familyOfferAmount" type="number" min="1" max="190000" step="500" placeholder="Ej. 180000">
             </label>
 
             <label id="familyDiscardField" class="family-field">
@@ -226,7 +228,7 @@
 
         <section class="detail-panel sticky-detail">
           <div class="detail-panel-head">
-            <div><span>CHECKLIST</span><h2>Antes de reservar</h2></div>
+            <div><span>ANTES DE DECIDIR</span><h2>Qué falta por comprobar</h2></div>
           </div>
           <div id="purchaseChecklist" class="detail-checklist"></div>
         </section>
@@ -243,7 +245,7 @@
   </main>
 </div>
 
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 <script type="module" src="/property.js"></script>
 </body>
 </html>

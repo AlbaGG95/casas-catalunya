@@ -1,0 +1,75 @@
+name: Step 10 main canary · Pisos Tarragona
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/step10-main-canary.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      SCAN_PROVIDER: "Pisos.com"
+      SCAN_PROVINCE: "Tarragona"
+      SCAN_MODE: "recent"
+      INCREMENTAL_ONLY: "true"
+      OUTPUT_PATH: "data/shard.json"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Run regression suite
+        run: npm test
+
+      - name: Discover Pisos.com Tarragona
+        env:
+          PIPELINE_PHASE: "discover"
+          OUTPUT_PATH: "data/discovery.json"
+        run: npm run update:listings
+
+      - name: Plan new, pending or security-backfill listings
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/discovery-plan"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/discovery.json > data/plan.json
+          jq -e '.ok == true' data/plan.json
+          jq '{discovered,planned,scanMode}' data/plan.json
+
+      - name: Classify planned listings
+        env:
+          PIPELINE_PHASE: "classify"
+          PLAN_PATH: "data/plan.json"
+          OUTPUT_PATH: "data/shard.json"
+        run: npm run update:listings
+
+      - name: Ingest canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+
+          RESPONSE="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
+          printf '%s' "$RESPONSE" | jq -e '.ok == true'
+          printf '%s' "$RESPONSE" | jq '{accepted,rejected,securityTextStored,withdrawn}'
+
+          OFFICIAL="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/official-checks"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
+          printf '%s' "$OFFICIAL" | jq -e '.ok == true'
+
+          jq '{action:"complete",generatedAt,pipelineResults}' data/shard.json > data/discovery-complete.json
+          COMPLETE="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/discovery-plan"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/discovery-complete.json)"
+          printf '%s' "$COMPLETE" | jq -e '.ok == true'
+          printf '%s' "$COMPLETE" | jq '{completed}'

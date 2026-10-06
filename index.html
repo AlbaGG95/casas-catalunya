@@ -12,12 +12,14 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
   <title>Casa Cataluña · Buscador familiar</title>
-  <meta name="description" content="Buscador familiar de casas habitables en Cataluña hasta 185.000 €">
+  <meta name="description" content="Buscador familiar de casas habitables en Cataluña hasta 190.000 €">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/ui-v2.css">
+  <link rel="stylesheet" href="/accessibility.css">
 </head>
 <body>
+<a class="skip-link" href="#listingGrid">Saltar directamente a las viviendas</a>
 <div class="app home-v2">
   <header class="topbar home-header">
     <a class="brand brand-link" href="/" aria-label="Casa Cataluña">
@@ -25,17 +27,17 @@
       <div><strong>Casa Cataluña</strong><span>Buscador familiar</span></div>
     </a>
     <div class="header-actions">
-      <button id="alertButton" class="header-button">Alertas</button>
-      <button id="familyButton" class="header-button">Familia</button>
-      <div class="live" title="Estado de sincronización"><i></i><span id="updatedAt">Sincronizando…</span></div>
+      <button id="alertButton" class="header-button" type="button">Alertas</button>
+      <button id="familyButton" class="header-button" type="button">Familia</button>
+      <div class="live" title="Estado de sincronización"><i aria-hidden="true"></i><span id="updatedAt" role="status" aria-live="polite">Sincronizando…</span></div>
     </div>
   </header>
 
   <section class="home-intro">
     <div class="intro-copy">
-      <span class="eyebrow">CASAS EN CATALUÑA · MÁXIMO 185.000 €</span>
+      <span class="eyebrow">CASAS EN CATALUÑA · MÁXIMO 190.000 €</span>
       <h1>Encuentra una casa donde vivir, sin perder tiempo con anuncios que no encajan.</h1>
-      <p>Buscamos automáticamente viviendas de 3+ habitaciones con jardín/parcela y eliminamos señales de ocupación, subasta, reforma importante y otras incompatibilidades.</p>
+      <p>Mostramos casas de 3 o más habitaciones con jardín o parcela y apartamos los anuncios con señales de ocupación, subasta, reforma importante u otros problemas.</p>
     </div>
     <div class="intro-metrics" aria-label="Resumen de resultados">
       <article><strong id="visibleCount">—</strong><span>Resultados</span></article>
@@ -43,6 +45,13 @@
       <article><strong id="under180Count">—</strong><span>≤180.000 €</span></article>
       <article><strong id="savedCount">0</strong><span>Guardadas</span></article>
     </div>
+  </section>
+
+  <section class="family-guide" aria-labelledby="quickGuideTitle">
+    <h2 id="quickGuideTitle">Cómo usar esta página</h2>
+    <div><b aria-hidden="true">1</b><span>Elige provincia y presupuesto.</span></div>
+    <div><b aria-hidden="true">2</b><span>Mira primero las casas <strong>Recomendadas</strong>.</span></div>
+    <div><b aria-hidden="true">3</b><span>Pulsa <strong>Ver vivienda</strong> para revisar los detalles.</span></div>
   </section>
 
   <section class="search-panel" aria-label="Buscar viviendas">
@@ -61,15 +70,16 @@
       <label class="field">
         <span>Presupuesto</span>
         <select id="budgetFilter">
-          <option value="smart185">Objetivo 180k · máximo 185k</option>
+          <option value="smart190">Objetivo 180k · máximo 190k</option>
           <option value="180">Máximo 180.000 €</option>
           <option value="185">Máximo 185.000 €</option>
+          <option value="190">Máximo 190.000 €</option>
         </select>
       </label>
       <label class="field">
-        <span>Ver</span>
+        <span>Mostrar</span>
         <select id="statusFilter">
-          <option value="">Todas las candidatas</option>
+          <option value="">Todas las casas</option>
           <option value="new">Nuevas / recientes</option>
           <option value="since-visit">Nuevas desde mi última visita</option>
           <option value="best">Mejor encaje</option>
@@ -101,25 +111,25 @@
       <div class="advanced-filters">
         <label class="field"><span>Habitaciones</span><select id="bedroomFilter"><option value="3">3 o más</option><option value="4">4 o más</option></select></label>
         <label class="field"><span>Trayecto desde 08032</span><select id="driveFilter"><option value="">Hasta 90 min / pendiente</option><option value="60">≤60 min confirmados</option><option value="75">≤75 min confirmados</option><option value="90">≤90 min confirmados</option></select></label>
-        <label class="field"><span>Confianza de datos</span><select id="confidenceFilter"><option value="">Cualquiera</option><option value="medium">Media o alta</option><option value="high">Alta</option></select></label>
+        <label class="field"><span>Nivel de información</span><select id="confidenceFilter"><option value="">Cualquier nivel</option><option value="medium">Información suficiente</option><option value="high">Información muy completa</option></select></label>
         <label class="field"><span>Extra</span><select id="extraFilter"><option value="">Sin filtro extra</option><option value="garage">Con garaje</option><option value="pool">Con piscina</option><option value="services">Servicios detectados</option><option value="mapped">Con ubicación en mapa</option></select></label>
       </div>
     </details>
   </section>
 
   <section class="sync-bar" aria-label="Estado del buscador">
-    <div><span class="sync-dot"></span><strong>Actualización automática</strong></div>
-    <span>Último escaneo: <b id="lastScan">—</b></span>
-    <span>Fuentes: <b id="sourceHealth">—</b></span>
-    <button id="toggleMap" class="text-button">Mostrar mapa</button>
+    <div><span class="sync-dot" aria-hidden="true"></span><strong>Buscador actualizado automáticamente</strong></div>
+    <span>Última actualización: <b id="lastScan">—</b></span>
+    <span>Portales: <b id="sourceHealth">—</b></span>
+    <button id="toggleMap" class="text-button" type="button" aria-expanded="false" aria-controls="candidateMap">Mostrar mapa</button>
   </section>
 
   <section class="map-panel home-map">
     <div class="map-head">
-      <div><span>MAPA</span><h2>Ubicación de las candidatas</h2></div>
+      <div><span>MAPA</span><h2>Ubicación de las casas</h2></div>
       <span id="mapMeta">Cargando ubicaciones…</span>
     </div>
-    <div id="candidateMap" class="candidate-map" aria-label="Mapa de viviendas candidatas"></div>
+    <div id="candidateMap" class="candidate-map" aria-label="Mapa de las viviendas encontradas"></div>
     <p class="map-note">La ubicación puede ser aproximada hasta disponer de dirección o referencia catastral fiable.</p>
   </section>
 
@@ -129,53 +139,53 @@
       <h2>Viviendas encontradas</h2>
       <p id="resultMeta">Cargando…</p>
     </div>
-    <div class="safety-switch" role="group" aria-label="Nivel de verificación del estado de la vivienda">
-      <button class="active" data-safety-view="all" type="button">
+    <div class="safety-switch" role="group" aria-label="Estado de revisión de las viviendas">
+      <button class="active" data-safety-view="all" type="button" aria-pressed="true">
         Todas <strong id="allSafetyCount">—</strong>
       </button>
-      <button data-safety-view="compatible" type="button">
-        Compatibles <strong id="compatibleCount">—</strong>
+      <button data-safety-view="compatible" type="button" aria-pressed="false">
+        Recomendadas <strong id="compatibleCount">—</strong>
       </button>
-      <button data-safety-view="review" type="button">
-        Por verificar <strong id="reviewCount">—</strong>
+      <button data-safety-view="review" type="button" aria-pressed="false">
+        Falta confirmar <strong id="reviewCount">—</strong>
       </button>
     </div>
   </section>
   <div class="safety-explainer">
-    <span><i class="legend-ok"></i><strong>Compatibles:</strong> el anuncio indica un estado apto para entrar y no hay contradicciones detectadas.</span>
-    <span><i class="legend-review"></i><strong>Por verificar:</strong> cumple los filtros duros, pero el anuncio no demuestra suficientemente el estado.</span>
+    <span><i class="legend-ok" aria-hidden="true"></i><strong>Recomendadas:</strong> el anuncio parece apto para entrar a vivir y no hemos detectado contradicciones.</span>
+    <span><i class="legend-review" aria-hidden="true"></i><strong>Falta confirmar:</strong> la casa encaja en lo básico, pero faltan datos importantes por comprobar.</span>
   </div>
 
-  <main id="listingGrid" class="grid home-grid" aria-live="polite"></main>
+  <main id="listingGrid" class="grid home-grid" aria-live="polite" tabindex="-1"></main>
   <div id="emptyState" class="empty" hidden></div>
   <button id="loadMore" class="load-more" hidden>Mostrar más viviendas</button>
 
   <details class="method-panel">
     <summary>Cómo filtramos las viviendas</summary>
     <div>
-      <p><strong>Fuera automáticamente:</strong> ocupación, alquiler vigente, subasta, proindiviso, no hipotecable, rústica, adosada/pareada, camping/bungalow, obra sin terminar o reforma importante.</p>
+      <p><strong>Descartamos automáticamente:</strong> ocupación, alquiler vigente, subasta, propiedad compartida (proindiviso), no hipotecable, finca rústica, adosada/pareada, camping/bungalow, obra sin terminar o reforma importante.</p>
       <p><strong>Pendiente no significa problema:</strong> si el anuncio no demuestra el estado, fibra, cargas o documentación, lo señalamos como pendiente en vez de inventarlo.</p>
       <p><strong>Antes de reservar:</strong> visita, nota simple, cédula, urbanismo, suministros y aprobación bancaria final.</p>
     </div>
   </details>
 
-  <footer class="home-footer">Casa Cataluña organiza anuncios para vuestra búsqueda familiar. La comprobación legal y técnica final debe hacerse antes de reservar o comprar. <a href="/system.html">Estado del sistema</a></footer>
+  <footer class="home-footer">Casa Cataluña organiza anuncios para vuestra búsqueda familiar. Antes de reservar o comprar hay que comprobar la vivienda y su documentación. <a href="/system.html">Información técnica</a></footer>
 </div>
 
 <div id="compareDock" class="compare-dock" hidden>
   <div><strong id="compareCount">0 seleccionadas</strong><span>Selecciona entre 2 y 4 viviendas.</span></div>
-  <div><button id="clearCompare">Limpiar</button><button id="openCompare" class="primary">Comparar</button></div>
+  <div><button id="clearCompare" type="button">Limpiar</button><button id="openCompare" class="primary" type="button">Comparar</button></div>
 </div>
 
 <div id="compareModal" class="compare-modal" hidden>
   <div class="compare-backdrop" data-close-compare></div>
   <section class="compare-dialog" role="dialog" aria-modal="true" aria-labelledby="compareTitle">
-    <div class="compare-dialog-head"><div><span>COMPARADOR</span><h2 id="compareTitle">Comparar viviendas</h2></div><button data-close-compare aria-label="Cerrar">×</button></div>
+    <div class="compare-dialog-head"><div><span>COMPARADOR</span><h2 id="compareTitle">Comparar viviendas</h2></div><button data-close-compare type="button" aria-label="Cerrar comparador">×</button></div>
     <div id="compareTableWrap" class="compare-table-wrap"></div>
   </section>
 </div>
 
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script type="module" src="/app.js"></script>
 </body>

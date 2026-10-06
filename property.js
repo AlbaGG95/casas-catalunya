@@ -1,9 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MIN_BEDROOMS} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
-const HARD_MAX_PRICE=185000;
-const TARGET_PRICE=180000;
 
 const db=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const $=s=>document.querySelector(s);
@@ -228,7 +227,7 @@ async function saveFamilyProgress(){
   const offerRaw=$("#familyOfferAmount").value.trim();
   const offer=offerRaw?Number(offerRaw):null;
   if(offer!=null&&(!Number.isInteger(offer)||offer<1||offer>HARD_MAX_PRICE)){
-    toast("La oferta debe estar entre 1 € y 185.000 €.");
+    toast("La oferta debe estar entre 1 € y "+euro(HARD_MAX_PRICE)+".");
     return;
   }
   const visitRaw=$("#familyVisitAt").value;
@@ -297,7 +296,7 @@ function buildScoreBreakdown(p){
   if(stored?.length)return stored;
 
   const parts=[{label:"Base de encaje",points:28}];
-  parts.push({label:p.price<=TARGET_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–185k",points:p.price<=TARGET_PRICE?12:4});
+  parts.push({label:p.price<=TARGET_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–190k",points:p.price<=TARGET_PRICE?12:4});
   parts.push({label:p.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:p.bedrooms>=4?7:4});
   parts.push({
     label:p.independent_status==="confirmed"?"Independiente confirmada":p.independent_status==="probable"?"Probablemente independiente":"Independencia pendiente",
@@ -322,7 +321,7 @@ function renderScore(p){
   const parts=buildScoreBreakdown(p);
   const total=parts.reduce((s,x)=>s+(Number(x.points)||0),0);
   $("#scoreBreakdown").innerHTML=
-    '<div class="score-total"><span>Score actual</span><strong>'+esc(p.score)+'/100</strong><small>Desglose de '+parts.length+' factores</small></div>'+
+    '<div class="score-total"><span>Coincidencia con tu búsqueda</span><strong>'+esc(p.score)+'/100</strong><small>'+parts.length+' criterios revisados</small></div>'+
     '<div class="score-parts">'+parts.map(x=>
       '<div><span>'+esc(x.label)+'</span><strong>+'+esc(x.points)+'</strong></div>'
     ).join("")+'</div>'+
@@ -332,7 +331,7 @@ function renderScore(p){
 function renderEvidence(p){
   const evidence=p.evidence||{};
   const items=[
-    ["Precio",p.price_confidence,evidence.price?.evidence||"Sin detalle de evidencia",euro(p.price)],
+    ["Precio",p.price_confidence,evidence.price?.evidence||"Información pendiente",euro(p.price)],
     ["Habitaciones",evidence.bedrooms?.confidence||"unknown","Origen del dato",String(p.bedrooms)],
     ["Jardín/parcela",evidence.garden?.confidence||"unknown",evidence.garden?.matched?"Detectado en el anuncio":"Pendiente",""],
     ["Independencia",evidence.independent?.confidence||"unknown",statusText(p.independent_status),""],
@@ -464,7 +463,7 @@ function renderChecklist(p){
   const withinBudget=Number(p.price)<=HARD_MAX_PRICE;
   const underTarget=Number(p.price)<=TARGET_PRICE;
   const rows=[
-    stateRow("Presupuesto",underTarget?"Dentro del objetivo ≤180.000 €":"Dentro del margen máximo ≤185.000 €",withinBudget?"ok":"warn"),
+    stateRow("Presupuesto",underTarget?"Dentro del objetivo ≤180.000 €":"Dentro del margen máximo ≤190.000 €",withinBudget?"ok":"warn"),
     stateRow("Habitaciones",p.bedrooms+" habitaciones",p.bedrooms>=3?"ok":"warn"),
     stateRow("Jardín/parcela",statusText(p.garden_status),p.garden_status==="confirmed"?"ok":"pending"),
     stateRow("Independencia",statusText(p.independent_status),p.independent_status==="confirmed"?"ok":"pending"),
@@ -548,12 +547,12 @@ function render(p){
   const tags=[];
   tags.push(p.status==="verified"?tag("Documentación verificada","verified"):tag("Candidata","candidate"));
   tags.push(tag("Precio "+confidenceText(p.price_confidence),p.price_confidence==="high"?"verified":p.price_confidence==="medium"?"candidate":"pending"));
-  if(p.price>TARGET_PRICE)tags.push(tag("Margen 180–185k","stretch"));
+  if(p.price>TARGET_PRICE)tags.push(tag("Margen 180–190k","stretch"));
   if(p.registry_status!=="verified_clear")tags.push(tag("Nota simple pendiente","pending"));
   $("#detailTags").innerHTML=tags.join("");
 
   const image=safe(p.image_url)||(p.listing_sources||[]).map(x=>safe(x.image_url)).find(Boolean);
-  $("#detailMedia").innerHTML=image?'<img src="'+esc(image)+'" alt="" referrerpolicy="no-referrer">':'<div class="detail-photo-fallback">Foto disponible en el anuncio original</div>';
+  $("#detailMedia").innerHTML=image?'<img src="'+esc(image)+'" alt="Foto del anuncio de '+esc(p.title||"la vivienda")+'" referrerpolicy="no-referrer">':'<div class="detail-photo-fallback">Foto disponible en el anuncio original</div>';
 
   const source=(p.listing_sources||[]).find(x=>x.active!==false&&safe(x.url));
   if(source){
@@ -613,7 +612,7 @@ async function load(){
     .eq("id",id)
     .in("status",["candidate","verified"])
     .lte("price",HARD_MAX_PRICE)
-    .gte("bedrooms",3)
+    .gte("bedrooms",MIN_BEDROOMS)
     .maybeSingle();
 
   if(error){

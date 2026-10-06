@@ -1,8 +1,9 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
-import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { evaluateSafetyText, evaluateSafetyDocument, SAFETY_DECISIONS } from "./safety-engine.ts";
 import { nextSourceHealthState } from "./source-health.mjs";
+import { MAX_PRICE, MIN_BEDROOMS, MAX_DRIVE_MINUTES } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO = "AlbaGG95/casas-catalunya";
 const ALLOWED_REF = "refs/heads/main";
@@ -28,24 +29,52 @@ function nullableNumber(v: any) {
   return Number.isFinite(n) ? n : null;
 }
 
-function hardReasons(l: any) {
+function securityTextOf(l: any) {
+  const value = l?.securityText?.safetyText;
+  if (typeof value === "string" && value.trim()) return value.slice(0, 48000);
+  return `${l?.title ?? ""} ${l?.summary ?? ""}`.trim();
+}
+
+function publicEvidence(value: any) {
+  if (!value || typeof value !== "object") return value || {};
+  const copy = JSON.parse(JSON.stringify(value));
+  if (copy?.safety) {
+    delete copy.safety.evidence;
+    delete copy.safety.evidenceDetail;
+  }
+  if (copy?.condition) {
+    delete copy.condition.evidence;
+    delete copy.condition.evidenceDetail;
+  }
+  return copy;
+}
+
+function publicRawPayload(l: any) {
+  if (!l || typeof l !== "object") return l;
+  const { securityText, ...safePayload } = l;
+  if (safePayload.evidence) safePayload.evidence = publicEvidence(safePayload.evidence);
+  return safePayload;
+}
+
+function hardValidation(l: any) {
   const reasons: string[] = [];
   const price = Number(l?.price);
   const beds = Number(l?.bedrooms);
-  const text = `${l?.title ?? ""} ${l?.summary ?? ""}`;
-  if (!Number.isInteger(price) || price < 1 || price > 185000) reasons.push("price");
-  if (!Number.isInteger(beds) || beds < 3 || beds > 20) reasons.push("bedrooms");
+  const text = securityTextOf(l);
+  if (!Number.isInteger(price) || price < 1 || price > MAX_PRICE) reasons.push("price");
+  if (!Number.isInteger(beds) || beds < MIN_BEDROOMS || beds > 20) reasons.push("bedrooms");
   if (!["Barcelona","Girona","Tarragona","Lleida"].includes(l?.province)) reasons.push("province");
   if (l?.active === false) reasons.push("inactive");
 
-  const edgeSafety = evaluateSafetyText(text);
+  const edgeSafety = l?.securityText && typeof l.securityText === "object"
+    ? evaluateSafetyDocument(l.securityText)
+    : evaluateSafetyText(text);
   if (edgeSafety.decision === SAFETY_DECISIONS.REJECT) reasons.push("safety:"+edgeSafety.code);
   if (l?.safetyDecision === SAFETY_DECISIONS.REJECT) reasons.push("crawler_safety:"+String(l?.safetyCode||"reject"));
 
-  if (l?.travelStatus === "too_far" || Number(l?.driveMinutes) > 90) reasons.push("too_far");
-  return reasons;
+  if (l?.travelStatus === "too_far" || Number(l?.driveMinutes) > MAX_DRIVE_MINUTES) reasons.push("too_far");
+  return { reasons, safety: edgeSafety };
 }
-
 function confidenceDecision(l: any) {
   const provider = String(l?.provider || "");
   const priceConfidence = ["high","medium","low","unknown"].includes(l?.priceConfidence) ? l.priceConfidence : "unknown";
@@ -155,17 +184,18 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const reasons = hardReasons(l);
+      const validation = hardValidation(l);
+      const reasons = validation.reasons;
       if (reasons.length) {
         rejected.push({
           provider: l?.provider || null,
           url: l?.url || null,
           canonical_url: l?.url ? normalizeUrl(l.url) : null,
           reason: reasons.join(","),
-          evidence: "edge_hard_validation",
+          evidence: validation.safety?.evidenceDetail?.excerpt || "edge_hard_validation",
           raw_price: Number.isFinite(Number(l?.price)) ? Number(l.price) : null,
           raw_bedrooms: Number.isFinite(Number(l?.bedrooms)) ? Number(l.bedrooms) : null,
-          raw_payload: l ?? {},
+          raw_payload: publicRawPayload(l) ?? {},
         });
         continue;
       }
@@ -244,7 +274,7 @@ Deno.serve(async (req) => {
         price_confidence: l._priceConfidence || l.priceConfidence || "unknown",
         data_confidence: l._dataConfidence || l.dataConfidence || "unknown",
         confidence_score: confidenceScore,
-        evidence: l.evidence || {},
+        evidence: publicEvidence(l.evidence),
         quarantine_reason: isQuarantine ? String(l._quarantineReason || "confidence") : null,
         last_verified_at: isQuarantine ? null : generatedAt,
         published_at: l.publishedAt || null,
@@ -294,7 +324,7 @@ Deno.serve(async (req) => {
         safety_decision: l.safetyDecision === SAFETY_DECISIONS.ACCEPT ? SAFETY_DECISIONS.ACCEPT : SAFETY_DECISIONS.REVIEW,
         safety_reason: l.safetyReason || l?.evidence?.safety?.reason || null,
         safety_code: l?.evidence?.safety?.code || null,
-        evidence: l.evidence || {},
+        evidence: publicEvidence(l.evidence),
         metadata: {
           freshnessStatus: l.freshnessStatus ?? null,
           freshnessEvidence: l.freshnessEvidence ?? null,
@@ -302,10 +332,55 @@ Deno.serve(async (req) => {
         }
       }));
 
+    const sourceMap = new Map<string, any>();
     if (sourceRows.length) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("listing_sources")
-        .upsert(sourceRows, { onConflict: "canonical_url" });
+        .upsert(sourceRows, { onConflict: "canonical_url" })
+        .select("id,property_id,canonical_url");
+      if (error) throw error;
+      for (const row of data || []) sourceMap.set(row.canonical_url, row);
+    }
+
+    const securityRows = persistable
+      .filter((l:any) => {
+        const doc = l?.securityText;
+        return l?.url && doc && typeof doc.safetyText === "string" &&
+          doc.safetyText.trim() && /^[0-9a-f]{64}$/.test(String(doc.contentHash || ""));
+      })
+      .map((l:any) => {
+        const canonicalUrl = normalizeUrl(l.url);
+        const source = sourceMap.get(canonicalUrl);
+        const decision = evaluateSafetyDocument(l.securityText);
+        const detail = decision.evidenceDetail || {};
+        return {
+          property_id: propertyMap.get(String(l.id)),
+          listing_source_id: source?.id || null,
+          canonical_url: canonicalUrl,
+          provider: l.provider || "unknown",
+          title_text: String(l.securityText.title || "").slice(0, 300) || null,
+          meta_description: String(l.securityText.metaDescription || "").slice(0, 4000) || null,
+          structured_text: String(l.securityText.structuredText || "").slice(0, 12000) || null,
+          body_text: String(l.securityText.bodyText || "").slice(0, 30000) || null,
+          safety_text: String(l.securityText.safetyText || "").slice(0, 48000),
+          content_hash: String(l.securityText.contentHash),
+          extractor_version: Number(l.securityText.version) || 1,
+          safety_decision: decision.decision,
+          safety_code: decision.code,
+          safety_reason: decision.reason,
+          evidence_source: detail.source || null,
+          evidence_match: detail.match ? String(detail.match).slice(0, 300) : null,
+          evidence_excerpt: detail.excerpt ? String(detail.excerpt).slice(0, 260) : null,
+          captured_at: l.securityText.capturedAt || l.lastChecked || generatedAt,
+          updated_at: generatedAt
+        };
+      })
+      .filter((row:any) => row.property_id);
+
+    if (securityRows.length) {
+      const { error } = await supabase
+        .from("listing_security_text")
+        .upsert(securityRows, { onConflict: "canonical_url" });
       if (error) throw error;
     }
 
@@ -397,6 +472,7 @@ Deno.serve(async (req) => {
       accepted: candidates.length,
       quarantined: quarantine.length,
       rejected: rejected.length,
+      securityTextStored: securityRows.length,
       withdrawn: inactiveFingerprints.length,
       disabledProviders: [...disabledProviders],
       generatedAt,

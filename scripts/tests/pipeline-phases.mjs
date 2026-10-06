@@ -39,7 +39,7 @@ await new Promise((resolve,reject)=>{
 const payload=JSON.parse(await fs.readFile(out,"utf8"));
 assert.equal(payload.pipelinePhase,"classify");
 assert.equal(payload.revalidation,true);
-assert.equal(payload.rules.maxPrice,185000);
+assert.equal(payload.rules.maxPrice,190000);
 assert.deepEqual(payload.listings,[]);
 assert.deepEqual(payload.pipelineResults,[]);
 assert.equal(payload.stats.checkedDetails,0);

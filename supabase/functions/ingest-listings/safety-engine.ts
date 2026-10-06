@@ -50,46 +50,110 @@ export const READY_RULES=[
   {code:"brand_new_finished",reason:"a estrenar/obra nueva terminada",rx:/\ba\s+estrenar\b|obra\s+nueva\s+(?:terminada|finalizada|lista\s+para\s+entrar)/i}
 ];
 
+const EVIDENCE_SEGMENTS=Object.freeze([
+  ["title","title"],
+  ["meta_description","metaDescription"],
+  ["structured","structuredText"],
+  ["body","bodyText"]
+]);
+
+function cleanEvidence(value){
+  return String(value||"").replace(/\s+/g," ").trim();
+}
+
+function excerptAround(value,index,match,maxLength=240){
+  const raw=String(value||"");
+  const before=90;
+  const after=Math.max(90,maxLength-before-String(match||"").length);
+  const start=Math.max(0,Number(index||0)-before);
+  const end=Math.min(raw.length,Number(index||0)+String(match||"").length+after);
+  const core=cleanEvidence(raw.slice(start,end));
+  return (start>0?"…":"")+core+(end<raw.length?"…":"");
+}
+
+function matchRule(value,rule,source){
+  const raw=String(value||"");
+  const match=raw.match(rule.rx);
+  if(!match)return null;
+  return {
+    ...rule,
+    match:match[0],
+    source,
+    excerpt:excerptAround(raw,match.index||0,match[0])
+  };
+}
+
 function firstMatch(text,rules){
-  const value=String(text||"");
   for(const rule of rules){
-    const match=value.match(rule.rx);
-    if(match)return {...rule,match:match[0]};
+    const found=matchRule(text,rule,"combined");
+    if(found)return found;
   }
   return null;
 }
 
-export function evaluateSafetyText(text,{partial=false}={}){
-  const value=String(text||"");
-
-  const hard=firstMatch(value,HARD_REJECT_RULES);
-  if(hard){
-    return {decision:SAFETY_DECISIONS.REJECT,reason:hard.reason,code:hard.code,evidence:hard.match};
+function firstMatchInDocument(document,rules){
+  const doc=document&&typeof document==="object"?document:{};
+  const hasSegments=EVIDENCE_SEGMENTS.some(([,key])=>cleanEvidence(doc[key]));
+  for(const rule of rules){
+    if(hasSegments){
+      for(const [source,key] of EVIDENCE_SEGMENTS){
+        const found=matchRule(doc[key],rule,source);
+        if(found)return found;
+      }
+    }else{
+      const found=matchRule(doc.safetyText,rule,"combined");
+      if(found)return found;
+    }
   }
+  return null;
+}
 
-  const conditionReject=firstMatch(value,CONDITION_REJECT_RULES);
-  if(conditionReject){
-    return {decision:SAFETY_DECISIONS.REJECT,reason:conditionReject.reason,code:conditionReject.code,evidence:conditionReject.match};
-  }
+function decisionResult(decision,found){
+  return {
+    decision,
+    reason:found.reason,
+    code:found.code,
+    evidence:found.match,
+    evidenceDetail:{
+      source:found.source,
+      match:found.match,
+      excerpt:found.excerpt
+    }
+  };
+}
 
-  const conditionReview=firstMatch(value,CONDITION_REVIEW_RULES);
-  if(conditionReview){
-    return {decision:SAFETY_DECISIONS.REVIEW,reason:conditionReview.reason,code:conditionReview.code,evidence:conditionReview.match};
-  }
+function evaluateWithFinder(finder,{partial=false}={}){
+  const hard=finder(HARD_REJECT_RULES);
+  if(hard)return decisionResult(SAFETY_DECISIONS.REJECT,hard);
 
-  const ready=firstMatch(value,READY_RULES);
-  if(ready){
-    return {decision:SAFETY_DECISIONS.ACCEPT,reason:ready.reason,code:ready.code,evidence:ready.match};
-  }
+  const conditionReject=finder(CONDITION_REJECT_RULES);
+  if(conditionReject)return decisionResult(SAFETY_DECISIONS.REJECT,conditionReject);
+
+  const conditionReview=finder(CONDITION_REVIEW_RULES);
+  if(conditionReview)return decisionResult(SAFETY_DECISIONS.REVIEW,conditionReview);
+
+  const ready=finder(READY_RULES);
+  if(ready)return decisionResult(SAFETY_DECISIONS.ACCEPT,ready);
 
   return {
     decision:SAFETY_DECISIONS.REVIEW,
     reason:partial?"sin señal negativa en texto parcial":"estado para entrar no confirmado",
     code:partial?"partial_unknown":"condition_unknown",
-    evidence:null
+    evidence:null,
+    evidenceDetail:null
   };
+}
+
+export function evaluateSafetyText(text,options={}){
+  const value=String(text||"");
+  return evaluateWithFinder(rules=>firstMatch(value,rules),options);
+}
+
+export function evaluateSafetyDocument(document,options={}){
+  return evaluateWithFinder(rules=>firstMatchInDocument(document,rules),options);
 }
 
 export function isSafetyReject(text){
   return evaluateSafetyText(text).decision===SAFETY_DECISIONS.REJECT;
 }
+
