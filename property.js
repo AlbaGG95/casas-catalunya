@@ -43,7 +43,10 @@ function statusText(v){
     confirmed_free:"Entrega libre indicada",no_signals:"Sin señales detectadas",
     compatible:"Compatible",no_restrictions_detected:"Sin restricciones detectadas",
     claimed_clear:"Anuncio afirma libre de cargas",verified_clear:"Verificado libre de cargas",
-    likely:"Probable",verified:"Verificado"
+    likely:"Probable",verified:"Verificado",
+    pending_identity:"Falta identidad precisa",ready_to_check:"Preparado para comprobar",
+    checked:"Comprobado",warning:"Revisar",not_found:"Sin coincidencia exacta",
+    manual:"Revisión manual",error:"Consulta no disponible"
   })[v]||"Pendiente";
 }
 function cleanPlace(value){
@@ -148,6 +151,59 @@ function renderVerification(p){
   ].join("");
 }
 
+function officialState(status){
+  if(status==="verified")return "ok";
+  if(["warning","error","not_found"].includes(status))return "warn";
+  return "pending";
+}
+
+function officialTitle(source){
+  return ({
+    catastro:"Catastro",
+    habitability:"Cédula de habitabilidad",
+    energy:"Certificado energético",
+    urbanism:"Mapa Urbanístico (MUC)",
+    flood:"Inundabilidad (ACA)"
+  })[source]||source;
+}
+
+function renderOfficialChecks(p){
+  const checks=[...(p.official_checks||[])];
+  const bySource=new Map(checks.map(x=>[x.source,x]));
+  const order=["catastro","habitability","energy","urbanism","flood"];
+  const cards=order.map(source=>{
+    const x=bySource.get(source)||{
+      source,status:"pending_identity",
+      summary:"Todavía no hay una comprobación oficial disponible.",
+      official_url:null,evidence:{}
+    };
+    const url=safe(x.official_url);
+    const grades=x.source==="energy"&&x.evidence?.grades
+      ? Object.entries(x.evidence.grades).filter(([,v])=>v).map(([k,v])=>(k==="emissions"?"Emisiones":"Energía")+": "+v).join(" · ")
+      : "";
+    return '<article class="official-card '+officialState(x.status)+'">'+
+      '<div class="official-card-head"><div><span>'+esc(officialTitle(source))+'</span><strong>'+esc(statusText(x.status))+'</strong></div><span class="official-dot"></span></div>'+
+      '<p>'+esc(x.summary||"")+'</p>'+
+      (grades?'<small class="official-extra">'+esc(grades)+'</small>':"")+
+      (x.checked_at?'<small>Comprobado '+fmt(x.checked_at)+'</small>':"")+
+      (url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Abrir fuente oficial ↗</a>':"")+
+      '</article>';
+  }).join("");
+
+  const identity=[];
+  if(p.cadastral_ref)identity.push('<span><b>Referencia catastral</b> '+esc(p.cadastral_ref)+'</span>');
+  if(p.address_text)identity.push('<span><b>Dirección detectada</b> '+esc(p.address_text)+(p.postal_code?' · '+esc(p.postal_code):"")+'</span>');
+  identity.push('<span><b>Precisión</b> '+esc(({
+    cadastral:"Referencia catastral",
+    exact_address:"Dirección estructurada",
+    approximate:"Ubicación aproximada",
+    locality:"Solo localidad",
+    unknown:"No determinada"
+  })[p.location_precision]||"No determinada")+'</span>');
+  $("#officialIdentity").innerHTML=identity.join("");
+  $("#officialChecks").innerHTML=cards;
+}
+
 function renderChecklist(p){
   const withinBudget=Number(p.price)<=HARD_MAX_PRICE;
   const underTarget=Number(p.price)<=TARGET_PRICE;
@@ -177,6 +233,8 @@ function renderFacts(p){
     fact("Trayecto",p.drive_minutes!=null?Math.round(p.drive_minutes)+" min":"Pendiente","aprox. desde 08032"),
     fact("Garaje",p.has_garage?"Sí":"No detectado"),
     fact("Piscina",p.has_pool?"Sí":"No detectada"),
+    fact("Ref. catastral",p.cadastral_ref||"Pendiente",p.cadastral_ref?"Detectada en el anuncio":"No se inventa"),
+    fact("Dirección",p.address_text||"Pendiente",p.postal_code||""),
     fact("Publicación",p.published_at?fmt(p.published_at):"Fecha desconocida"),
     fact("Detectada",fmt(p.first_seen))
   ].join("");
@@ -256,6 +314,7 @@ function render(p){
   renderFacts(p);
   renderScore(p);
   renderEvidence(p);
+  renderOfficialChecks(p);
   renderPriceHistory(p);
   renderSources(p);
   renderChecklist(p);
@@ -284,6 +343,9 @@ async function load(){
       price_history(price,observed_at),
       verification(
         possession_status,registry_check,habitability_check,urbanism_check,utilities_check,fiber_check,notes,updated_at
+      ),
+      official_checks(
+        source,status,summary,official_url,evidence,checked_at,updated_at
       )
     `)
     .eq("id",id)

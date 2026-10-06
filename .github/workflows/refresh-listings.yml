@@ -97,3 +97,6 @@ jobs:
 
           RESPONSE="$(curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/ingest-listings"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
           echo "$RESPONSE"
+
+          OFFICIAL="$(curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/official-checks"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
+          echo "$OFFICIAL"
