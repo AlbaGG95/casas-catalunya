@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MID_PRICE} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
@@ -154,7 +154,7 @@ function card(h){
   const badges=[];
   badges.push('<span class="home-state '+(compatible?"ready":"review")+'">'+(compatible?"✓ Compatible":"Por verificar")+'</span>');
   const fresh=freshnessBadge(h);if(fresh)badges.push(fresh);
-  if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–185k</span>');
+  if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–190k</span>');
   if(family?.stage&&family.stage!=="new")badges.push('<span class="home-state family">'+esc(familyStageLabel(family.stage))+'</span>');
 
   const media=img
