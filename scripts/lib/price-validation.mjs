@@ -24,8 +24,8 @@ function structuredPrices(items){
 
 function labeledPropertyPrice(text){
   const patterns=[
-    /precio\s+del\s+inmueble\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i,
-    /precio\s+de\s+venta\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i
+    /precio\s+del\s+inmueble\s*:?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i,
+    /precio\s+de\s+venta\s*:?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i
   ];
   for(const rx of patterns){
     const m=String(text||"").match(rx);
@@ -43,7 +43,7 @@ function extractProminentPrice($){
     if(!node.length)continue;
     const raw=sel==="h1"?node.parent().text():node.text();
     const txt=String(raw||"").replace(/\s+/g," ").trim().slice(0,3500);
-    for(const m of txt.matchAll(/(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/g)){
+    for(const m of txt.matchAll(/(\d{1,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/g)){
       const n=parseEuro(m[1]);
       if(n)candidates.push(n);
       if(candidates.length>=8)break;
@@ -104,7 +104,7 @@ export function extractPrice(text,items,$,provider){
     return {...result,confidence:priceConfidence(provider,result.evidence,false)};
   }
 
-  const m=String(text||"").match(/(?:precio[^0-9]{0,20})?(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i);
+  const m=String(text||"").match(/(?:precio[^0-9]{0,20})?(\d{1,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i);
   const fallback=parseEuro(m?.[1]);
   const result={price:fallback,conflict:false,evidence:fallback?"generic":"none"};
   return {...result,confidence:priceConfidence(provider,result.evidence,false)};
