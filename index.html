@@ -33,11 +33,14 @@
     </div>
   </header>
 
-  <section class="home-intro">
+  <section class="home-intro" aria-labelledby="heroTitle">
     <div class="intro-copy">
-      <span class="eyebrow">CASAS EN CATALUÑA · MÁXIMO 195.000 €</span>
-      <h1>Encuentra una casa donde vivir, sin perder tiempo con anuncios que no encajan.</h1>
-      <p>Mostramos casas de 3 o más habitaciones con jardín o parcela y apartamos los anuncios con señales de ocupación, subasta, reforma importante u otros problemas.</p>
+      <span class="eyebrow">BUSCADOR FAMILIAR · CATALUÑA</span>
+      <h1 id="heroTitle">La casa que buscáis. Sin perder tiempo con anuncios que no sirven.</h1>
+      <p>Solo mostramos viviendas que han superado nuestros filtros esenciales: hasta 195.000 €, 3+ habitaciones, jardín o parcela y evidencia de que están listas para entrar a vivir.</p>
+      <div class="criteria-strip" aria-label="Criterios esenciales">
+        <span>≤195.000 €</span><span>3+ habitaciones</span><span>Jardín obligatorio</span><span>Casa independiente</span><span>Lista para vivir</span><span>≤90 min</span>
+      </div>
     </div>
     <div class="intro-metrics" aria-label="Resumen de resultados">
       <article><strong id="visibleCount">—</strong><span>Resultados</span></article>
@@ -71,6 +74,7 @@
         <span>Presupuesto</span>
         <select id="budgetFilter">
           <option value="smart190">Objetivo 180k · máximo 195k</option>
+          <option value="195">Máximo 195.000 €</option>
           <option value="180">Máximo 180.000 €</option>
           <option value="185">Máximo 185.000 €</option>
         </select>
@@ -78,13 +82,13 @@
       <label class="field">
         <span>Mostrar</span>
         <select id="statusFilter">
-          <option value="">Todas las casas</option>
+          <option value="">Todas las verificadas</option>
           <option value="new">Nuevas / recientes</option>
           <option value="since-visit">Nuevas desde mi última visita</option>
           <option value="best">Mejor encaje</option>
           <option value="verified">Documentación verificada</option>
           <option value="independent">Independiente o probable</option>
-          <option value="pending">Pendientes de confirmar</option>
+          
           <option value="saved">Guardadas</option>
           <option value="family-contact">Familia · contactar</option>
           <option value="family-visit">Familia · visita solicitada</option>
@@ -132,28 +136,21 @@
     <p class="map-note">La ubicación puede ser aproximada hasta disponer de dirección o referencia catastral fiable.</p>
   </section>
 
+  <section class="trust-banner" aria-label="Garantía de filtrado"><strong>✓ Catálogo estricto</strong><span>Las viviendas dudosas permanecen fuera de los resultados hasta confirmar que están listas para vivir.</span></section>
+
   <section class="results-head">
     <div>
       <span class="eyebrow">RESULTADOS</span>
       <h2>Viviendas encontradas</h2>
       <p id="resultMeta">Cargando…</p>
     </div>
-    <div class="safety-switch" role="group" aria-label="Estado de revisión de las viviendas">
-      <button class="active" data-safety-view="all" type="button" aria-pressed="true">
-        Todas <strong id="allSafetyCount">—</strong>
-      </button>
-      <button data-safety-view="compatible" type="button" aria-pressed="false">
-        Recomendadas <strong id="compatibleCount">—</strong>
-      </button>
-      <button data-safety-view="review" type="button" aria-pressed="false">
-        Falta confirmar <strong id="reviewCount">—</strong>
-      </button>
+    <div class="safety-switch" role="group" aria-label="Estado de las viviendas">
+      <button class="active" data-safety-view="all" type="button" aria-pressed="true">Verificadas <strong id="allSafetyCount">—</strong></button>
+      <button data-safety-view="compatible" type="button" aria-pressed="false">Mejor encaje <strong id="compatibleCount">—</strong></button>
+      <button data-safety-view="review" type="button" aria-pressed="false" hidden>En revisión <strong id="reviewCount">0</strong></button>
     </div>
   </section>
-  <div class="safety-explainer">
-    <span><i class="legend-ok" aria-hidden="true"></i><strong>Recomendadas:</strong> el anuncio parece apto para entrar a vivir y no hemos detectado contradicciones.</span>
-    <span><i class="legend-review" aria-hidden="true"></i><strong>Falta confirmar:</strong> la casa encaja en lo básico, pero faltan datos importantes por comprobar.</span>
-  </div>
+  <div class="safety-explainer"><span><i class="legend-ok" aria-hidden="true"></i><strong>Verificadas para mostrar:</strong> el anuncio aporta evidencia de buen estado y no contiene contradicciones detectadas.</span></div>
 
   <main id="listingGrid" class="grid home-grid" aria-live="polite" tabindex="-1"></main>
   <div id="emptyState" class="empty" hidden></div>
