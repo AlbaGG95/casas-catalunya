@@ -659,6 +659,7 @@ async function runClassificationPhase(){
     generatedAt:now,
     scanMode:MODE,
     pipelinePhase:"classify",
+    revalidation:!!plan.revalidation,
     rules:{
       preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
       gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
