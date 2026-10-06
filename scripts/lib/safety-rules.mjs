@@ -4,10 +4,11 @@ import {
   evaluateSafetyText,
   SAFETY_DECISIONS
 } from "./safety-engine.mjs";
+import {
+  MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,MID_PRICE
+} from "../../search-criteria.js";
 
-export const MAX_PRICE=185000;
-export const MIN_BEDROOMS=3;
-export const MAX_DRIVE_MINUTES=90;
+export {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,MID_PRICE};
 
 export const BLOCK_PATTERNS=HARD_REJECT_RULES.map(x=>[x.reason,x.rx]);
 export const BAD_CONDITION=CONDITION_REJECT_RULES.map(x=>[x.reason,x.rx]);
