@@ -85,3 +85,25 @@ body{background:var(--home-bg);font-size:16px;line-height:1.45}
 .source-status{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:850}.source-status.ok{background:#e7f5ec;color:#236a46}.source-status.warn{background:#fff4dc;color:#775b17}.source-status.down{background:#fff0ed;color:#94483e}
 @media(max-width:1000px){.system-kpis{grid-template-columns:repeat(3,1fr)}.catalogue-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.system-page{padding:14px 12px 48px}.system-intro h1{font-size:29px}.system-kpis{grid-template-columns:1fr 1fr}.invariant-grid,.catalogue-grid{grid-template-columns:1fr}.system-panel-head{align-items:flex-start;flex-direction:column}}
+
+
+/* 2026 visual system: warm Mediterranean, strict-search product */
+:root{--home-bg:#f6f2e9;--home-panel:#fffdf8;--home-ink:#18251f;--home-muted:#657269;--home-line:#d9dfd8;--home-green:#163e32;--home-green-2:#28634f;--home-green-soft:#e8f1eb;--home-terracotta:#a6533e;--home-sand:#eadfc9;--home-shadow:0 18px 50px rgba(31,52,43,.09)}
+body{background:radial-gradient(circle at 8% 0,#fffaf0 0,transparent 28%),var(--home-bg)}
+.home-header{padding:4px 2px}.home-header .logo{border-radius:13px;background:linear-gradient(145deg,#163e32,#2a6752);box-shadow:0 8px 22px rgba(22,62,50,.18)}
+.home-intro{position:relative;overflow:hidden;min-height:370px;align-items:center;background:linear-gradient(118deg,rgba(17,53,42,.98),rgba(31,83,64,.94));border-radius:28px;padding:clamp(28px,4vw,56px);box-shadow:0 26px 70px rgba(23,55,44,.18)}
+.home-intro:after{content:"";position:absolute;width:420px;height:420px;border:1px solid rgba(255,255,255,.13);border-radius:50%;right:-130px;top:-170px;box-shadow:0 0 0 70px rgba(255,255,255,.025),0 0 0 140px rgba(255,255,255,.018);pointer-events:none}
+.intro-copy{position:relative;z-index:1}.intro-copy h1{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:clamp(38px,4.7vw,66px);max-width:900px;letter-spacing:-.045em;line-height:.99}.intro-copy p{font-size:16px;max-width:760px}
+.criteria-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.criteria-strip span{display:inline-flex;align-items:center;min-height:36px;padding:7px 11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.09);border-radius:999px;color:#f5f7f4;font-size:12px;font-weight:750}
+.intro-metrics{position:relative;z-index:1}.intro-metrics article{backdrop-filter:blur(6px);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
+.search-panel{margin-top:-22px;position:relative;z-index:2;border-radius:20px;padding:18px;box-shadow:0 22px 55px rgba(34,52,44,.11)}
+.family-guide{border-radius:18px;background:#fffaf0;border-color:#e8dcc4}
+.trust-banner{display:flex;align-items:center;gap:12px;margin:18px 0 4px;padding:12px 15px;background:#e8f3ec;border:1px solid #cfe2d6;border-radius:13px;color:#315a47;font-size:13px}.trust-banner strong{color:#1e6745;white-space:nowrap}
+.results-head h2{font-family:Georgia,"Times New Roman",serif;font-size:32px;font-weight:700}
+.home-card{background:var(--home-panel);border-radius:20px;overflow:hidden}.home-card .card-media{height:240px}.home-card:hover{transform:translateY(-3px)}
+.home-card .price{font-family:Georgia,"Times New Roman",serif;font-size:32px}.home-card h2{font-size:18px}
+.home-state.ready{background:#e4f2e8;color:#1c6843}.home-card-actions .detail-link{background:linear-gradient(135deg,#163e32,#28634f)}
+.field input:focus-visible,.field select:focus-visible,.header-button:focus-visible,.home-card-actions a:focus-visible,.home-card-actions button:focus-visible,.safety-switch button:focus-visible,.load-more:focus-visible{outline:3px solid #b45e47;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}.home-card:hover{transform:none}}
+@media(max-width:760px){.home-intro{min-height:auto;border-radius:22px;padding:28px 22px 44px}.intro-copy h1{font-size:40px}.search-panel{margin-top:-24px}.criteria-strip{gap:6px}.criteria-strip span{font-size:11px}.trust-banner{align-items:flex-start;flex-direction:column;gap:3px}.home-card .card-media{height:250px}}
+@media(max-width:480px){.intro-copy h1{font-size:34px}.home-intro{padding:25px 18px 42px}.criteria-strip span{min-height:34px}.intro-metrics{grid-template-columns:1fr 1fr}.home-card .card-media{height:225px}}
