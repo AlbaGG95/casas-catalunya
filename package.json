@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "update:listings": "node scripts/update-listings.mjs",
-    "test": "node scripts/tests/baseline-safety-audit.mjs && node scripts/tests/safety-engine-v2.mjs && node scripts/tests/regression.mjs && node scripts/tests/official-identity.mjs && node scripts/tests/pipeline-phases.mjs && node scripts/tests/discovery-ledger-reasons.mjs && node scripts/tests/provider-adapters.mjs && node scripts/tests/source-health.mjs && node scripts/tests/source-catalog.mjs && node --check scripts/update-listings.mjs && node --check app.js && node --check property.js && node --check sw.js && node scripts/tests/ui-contract.mjs && node scripts/tests/safety-view.mjs && node --check system.js && node scripts/tests/system-status.mjs"
+    "test": "node scripts/tests/baseline-safety-audit.mjs && node scripts/tests/safety-engine-v2.mjs && node scripts/tests/regression.mjs && node scripts/tests/official-identity.mjs && node scripts/tests/pipeline-phases.mjs && node scripts/tests/discovery-ledger-reasons.mjs && node scripts/tests/provider-adapters.mjs && node scripts/tests/source-health.mjs && node scripts/tests/source-catalog.mjs && node --check scripts/update-listings.mjs && node --check app.js && node --check property.js && node --check sw.js && node scripts/tests/ui-contract.mjs && node scripts/tests/safety-view.mjs && node --check system.js && node scripts/tests/system-status.mjs && node scripts/tests/live-fotocasa-source-probe.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0"
