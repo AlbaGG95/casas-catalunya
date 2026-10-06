@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
         price_confidence: l._priceConfidence || l.priceConfidence || "unknown",
         data_confidence: l._dataConfidence || l.dataConfidence || "unknown",
         confidence_score: confidenceScore,
-        evidence: l.evidence || {},
+        evidence: publicEvidence(l.evidence),
         quarantine_reason: isQuarantine ? String(l._quarantineReason || "confidence") : null,
         last_verified_at: isQuarantine ? null : generatedAt,
         published_at: l.publishedAt || null,
@@ -324,7 +324,7 @@ Deno.serve(async (req) => {
         safety_decision: l.safetyDecision === SAFETY_DECISIONS.ACCEPT ? SAFETY_DECISIONS.ACCEPT : SAFETY_DECISIONS.REVIEW,
         safety_reason: l.safetyReason || l?.evidence?.safety?.reason || null,
         safety_code: l?.evidence?.safety?.code || null,
-        evidence: l.evidence || {},
+        evidence: publicEvidence(l.evidence),
         metadata: {
           freshnessStatus: l.freshnessStatus ?? null,
           freshnessEvidence: l.freshnessEvidence ?? null,
