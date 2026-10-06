@@ -1,3 +1,5 @@
+import {MAX_PRICE,MIN_BEDROOMS} from "../../search-criteria.js";
+
 export const PROVINCES=[
   {name:"Barcelona",slug:"barcelona"},
   {name:"Tarragona",slug:"tarragona"},
@@ -19,14 +21,14 @@ export function buildSourceDefinitions({mode="recent",scanProvider="",scanProvin
   for(const p of PROVINCES){
     add(out,{
       provider:"Fotocasa",province:p.name,kind:"recent",variant:"chalets-48h",
-      base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=185000&bedroomsMin=3`,
+      base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/publicado-ultimas-48-horas/l?priceMax=${MAX_PRICE}&bedroomsMin=${MIN_BEDROOMS}`,
       pages:1,maxDetails:normalizedMode==="deep"?80:50
     });
 
     if(normalizedMode==="deep"){
       add(out,{
         provider:"Fotocasa",province:p.name,kind:"deep",variant:"chalets-full",
-        base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3`,
+        base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/l?priceMax=${MAX_PRICE}&bedroomsMin=${MIN_BEDROOMS}`,
         pages:1,maxDetails:100
       });
     }
@@ -46,7 +48,7 @@ export function buildSourceDefinitions({mode="recent",scanProvider="",scanProvin
 
     add(out,{
       provider:"Pisos.com",province:p.name,kind:normalizedMode==="recent"?"recentish":"deep",variant:"casas-3plus",
-      base:`https://www.pisos.com/venta/casas-${p.slug}/con-3-habitaciones/hasta-185000/`,
+      base:`https://www.pisos.com/venta/casas-${p.slug}/con-${MIN_BEDROOMS}-habitaciones/hasta-${MAX_PRICE}/`,
       pages:normalizedMode==="deep"?16:4,maxDetails:normalizedMode==="deep"?190:70
     });
 
@@ -70,7 +72,7 @@ export function buildSourceDefinitions({mode="recent",scanProvider="",scanProvin
 
     add(out,{
       provider:"Idealista",province:p.name,kind:normalizedMode==="recent"?"recentish":"deep",variant:"independientes",
-      base:`https://www.idealista.com/venta-viviendas/${p.slug}-provincia/con-chalets-independientes,precio-hasta_185000/`,
+      base:`https://www.idealista.com/venta-viviendas/${p.slug}-provincia/con-chalets-independientes,precio-hasta_${MAX_PRICE}/`,
       pages:normalizedMode==="deep"?8:2,maxDetails:normalizedMode==="deep"?140:55
     });
 
