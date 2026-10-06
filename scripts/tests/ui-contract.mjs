@@ -11,7 +11,7 @@ const required=[
   "compareModal","compareTableWrap","toast"
 ];
 for(const id of required){
-  assert.match(html,new RegExp('id=["\\']'+id+'["\\']'),"Missing UI contract id: "+id);
+  assert.ok(html.includes(`id="${id}"`)||html.includes(`id='${id}'`),"Missing UI contract id: "+id);
 }
 assert.match(html,/ui-v2\.css/,"Frontend v2 stylesheet must be loaded");
 assert.doesNotMatch(html,/class="checks"/,"Technical checklist should not clutter the home screen");
