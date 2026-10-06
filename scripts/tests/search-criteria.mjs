@@ -5,21 +5,21 @@ import {
 } from "../../search-criteria.js";
 import {coreValidation} from "../lib/safety-rules.mjs";
 
-assert.equal(MAX_PRICE,190000,"Maximum purchase price must be 190,000 €");
+assert.equal(MAX_PRICE,195000,"Maximum purchase price must be 195,000 €");
 assert.equal(PREFERRED_PRICE,180000);
 assert.equal(MID_PRICE,185000);
 assert.equal(MIN_BEDROOMS,3);
 assert.equal(MAX_DRIVE_MINUTES,90);
 
 assert.deepEqual(
-  coreValidation({price:190000,bedrooms:3,title:"Casa independiente",summary:"buen estado",active:true}),
+  coreValidation({price:195000,bedrooms:3,title:"Casa independiente",summary:"buen estado",active:true}),
   [],
-  "190,000 € must remain inside the hard budget"
+  "195,000 € must remain inside the hard budget"
 );
 assert.deepEqual(
-  coreValidation({price:190001,bedrooms:3,title:"Casa independiente",summary:"buen estado",active:true}),
+  coreValidation({price:195001,bedrooms:3,title:"Casa independiente",summary:"buen estado",active:true}),
   ["price"],
-  "190,001 € must be outside the hard budget"
+  "195,001 € must be outside the hard budget"
 );
 
 const edge=fs.readFileSync("supabase/functions/_shared/search-criteria.ts","utf8");
@@ -48,7 +48,7 @@ assert.match(app,/from "\.\/search-criteria\.js"/);
 assert.match(property,/from "\.\/search-criteria\.js"/);
 assert.doesNotMatch(app,/const HARD_MAX_PRICE=\d+/);
 assert.doesNotMatch(property,/const HARD_MAX_PRICE=\d+/);
-assert.match(propertyHtml,/id="familyOfferAmount"[^>]*max="190000"/);
+assert.match(propertyHtml,/id="familyOfferAmount"[^>]*max="195000"/);
 assert.doesNotMatch(propertyHtml,/id="familyOfferAmount"[^>]*max="185000"/);
 
 console.log("Central search criteria contract: OK");
