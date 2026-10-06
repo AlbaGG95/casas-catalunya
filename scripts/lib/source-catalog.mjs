@@ -23,6 +23,14 @@ export function buildSourceDefinitions({mode="recent",scanProvider="",scanProvin
       pages:1,maxDetails:normalizedMode==="deep"?80:50
     });
 
+    if(normalizedMode==="deep"){
+      add(out,{
+        provider:"Fotocasa",province:p.name,kind:"deep",variant:"chalets-full",
+        base:`https://www.fotocasa.es/es/comprar/chalets/${p.slug}-provincia/todas-las-zonas/l?priceMax=185000&bedroomsMin=3`,
+        pages:1,maxDetails:100
+      });
+    }
+
     // Habitaclia exposes both "chalets" and the broader "casas" catalogue.
     // We scan both and deduplicate by canonical detail URL downstream.
     add(out,{

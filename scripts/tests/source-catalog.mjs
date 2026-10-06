@@ -2,8 +2,18 @@ import assert from "node:assert/strict";
 import {buildSourceDefinitions,sourceDefinitionKey} from "../lib/source-catalog.mjs";
 
 const all=buildSourceDefinitions({mode:"deep"});
-assert.equal(all.length,36,"Expected 9 search seeds × 4 provinces");
+assert.equal(all.length,40,"Expected 10 deep search seeds × 4 provinces");
 assert.equal(new Set(all.map(sourceDefinitionKey)).size,all.length,"Every source seed needs a unique key");
+
+const barcelonaFotocasa=buildSourceDefinitions({mode:"deep",scanProvider:"Fotocasa",scanProvince:"Barcelona"});
+assert.equal(barcelonaFotocasa.length,2);
+assert.deepEqual(new Set(barcelonaFotocasa.map(x=>x.variant)),new Set(["chalets-48h","chalets-full"]));
+assert.ok(barcelonaFotocasa.some(x=>x.variant==="chalets-full"&&!x.base.includes("publicado-ultimas-48-horas")));
+assert.ok(barcelonaFotocasa.every(x=>x.pages===1));
+
+const recentFotocasa=buildSourceDefinitions({mode:"recent",scanProvider:"Fotocasa",scanProvince:"Barcelona"});
+assert.equal(recentFotocasa.length,1);
+assert.equal(recentFotocasa[0].variant,"chalets-48h");
 
 const barcelonaHabitaclia=buildSourceDefinitions({mode:"deep",scanProvider:"Habitaclia",scanProvince:"Barcelona"});
 assert.equal(barcelonaHabitaclia.length,2);
