@@ -37,7 +37,7 @@ function jsonLd(price){
 assert.equal(blockReason("Inmueble ocupado y sin posesión"),"ocupada");
 assert.equal(blockReason("Casa adosada con jardín"),"adosada");
 assert.equal(badConditionReason("Vivienda para reformar completamente"),"reforma integral");
-assert.deepEqual(coreValidation({price:186000,bedrooms:4,title:"Casa",summary:"",active:true}),["price"]);
+assert.deepEqual(coreValidation({price:190001,bedrooms:4,title:"Casa",summary:"",active:true}),["price"]);
 assert.deepEqual(coreValidation({price:179000,bedrooms:2,title:"Casa",summary:"",active:true}),["bedrooms"]);
 assert.ok(coreValidation({price:179000,bedrooms:4,title:"Casa independiente",summary:"buen estado",active:true}).length===0);
 
