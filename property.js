@@ -138,6 +138,26 @@ function renderSources(p){
   }).join(""):'<p class="detail-muted">No hay fuentes activas disponibles.</p>';
 }
 
+function renderNearbyServices(p){
+  const rows=[...(p.nearby_services||[])].sort((a,b)=>(a.distance_m??999999)-(b.distance_m??999999));
+  const labels={
+    supermarket:"Supermercado / compra",
+    pharmacy:"Farmacia",
+    health:"Centro sanitario",
+    school:"Colegio / instituto",
+    fuel:"Gasolinera",
+    transport:"Transporte público"
+  };
+  const order=["supermarket","pharmacy","health","school","fuel","transport"];
+  const byCategory=new Map(rows.map(x=>[x.category,x]));
+  $("#nearbyServices").innerHTML=order.map(category=>{
+    const x=byCategory.get(category);
+    if(!x)return '<article class="nearby-card"><span>'+esc(labels[category])+'</span><strong>Pendiente</strong><small>No detectado todavía en el radio de búsqueda.</small></article>';
+    const km=x.distance_m<1000?Math.round(x.distance_m)+" m":(x.distance_m/1000).toFixed(1)+" km";
+    return '<article class="nearby-card"><span>'+esc(labels[category])+'</span><strong>'+esc(x.name||labels[category])+'</strong><em>'+esc(km)+'</em><small>Distancia aprox. en línea recta · OpenStreetMap</small></article>';
+  }).join("");
+}
+
 function renderVerification(p){
   const v=Array.isArray(p.verification)?p.verification[0]:(p.verification||{});
   const row=(label,value,okValue="verified")=>stateRow(label,statusText(value),value===okValue||value==="verified_clear"||value==="confirmed_free"?"ok":"pending");
@@ -315,6 +335,7 @@ function render(p){
   renderScore(p);
   renderEvidence(p);
   renderOfficialChecks(p);
+  renderNearbyServices(p);
   renderPriceHistory(p);
   renderSources(p);
   renderChecklist(p);
@@ -346,6 +367,9 @@ async function load(){
       ),
       official_checks(
         source,status,summary,official_url,evidence,checked_at,updated_at
+      ),
+      nearby_services(
+        category,name,distance_m,latitude,longitude,checked_at
       )
     `)
     .eq("id",id)
