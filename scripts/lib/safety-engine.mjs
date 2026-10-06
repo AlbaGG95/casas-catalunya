@@ -30,7 +30,7 @@ export const HARD_REJECT_RULES=[
 
 export const CONDITION_REJECT_RULES=[
   {code:"unfinished_construction",reason:"obra/construcción sin terminar",rx:/obra\s+nueva\s+en\s+construcci[oó]n|(?:casa|vivienda|inmueble|obra)\s+(?:en|en\s+proceso\s+de)\s+construcci[oó]n|proceso\s+de\s+construcci[oó]n|inscrit[ao][^.!?]{0,60}en\s+construcci[oó]n|para\s+terminar|pendiente\s+de\s+terminar|falta\s+(?:la\s+)?finalizaci[oó]n|estructura\s+(?:ya\s+)?construida|obra\s+inacabada|obra\s+parada|sin\s+terminar|a\s+medio\s+construir|medio\s+construid[ao]/i},
-  {code:"major_renovation",reason:"reforma importante",rx:/reforma\s+integral|para\s+reformar|a\s+reformar|necesita\s+reforma(?:\s+integral|s\s+importantes?)?|requiere\s+reforma(?:\s+integral|s\s+importantes?)?|precisa\s+reformas\s+importantes|reformas\s+importantes/i},
+  {code:"major_renovation",reason:"reforma integral",rx:/reforma\s+integral|para\s+reformar|a\s+reformar|necesita\s+reforma(?:\s+integral|s\s+importantes?)?|requiere\s+reforma(?:\s+integral|s\s+importantes?)?|precisa\s+reformas\s+importantes|reformas\s+importantes/i},
   {code:"ruin_or_uninhabitable",reason:"ruina/mal estado",rx:/\bruina\b|para\s+derribar|derribo|estado\s+ruinoso|inhabitable|muy\s+deteriorad[ao]|\bmal\s+estado\b/i}
 ];
 
