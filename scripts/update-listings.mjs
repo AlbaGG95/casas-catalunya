@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import * as cheerio from "cheerio";
 import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
-import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
+import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,PREFERRED_PRICE,BLOCK_PATTERNS,BAD_CONDITION} from "./lib/safety-rules.mjs";
 import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
@@ -17,7 +17,6 @@ const INCREMENTAL_ONLY=(process.env.INCREMENTAL_ONLY||"false")==="true";
 const OUTPUT_PATH=process.env.OUTPUT_PATH||"data/listings.json";
 const PIPELINE_PHASE=(process.env.PIPELINE_PHASE||"legacy").trim().toLowerCase();
 const PLAN_PATH=process.env.PLAN_PATH||"data/plan.json";
-const SOFT_PRICE=180000;
 const ORIGIN={lat:41.4247,lon:2.1647,label:"08032 Barcelona"};
 const UA="Mozilla/5.0 (compatible; CasasCatalunyaFamilyFinder/2.0; +https://github.com/AlbaGG95/casas-catalunya)";
 const MAX_DETAILS=MODE==="deep"?1600:360;
@@ -379,7 +378,7 @@ function confidenceOf(x){
 
 function scoreBreakdownOf(x,text){
   const parts=[{key:"base",label:"Base de encaje",points:28}];
-  parts.push({key:"budget",label:x.price<=SOFT_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–185k",points:x.price<=SOFT_PRICE?12:4});
+  parts.push({key:"budget",label:x.price<=PREFERRED_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–190k",points:x.price<=PREFERRED_PRICE?12:4});
   parts.push({key:"bedrooms",label:x.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:x.bedrooms>=4?7:4});
   parts.push({
     key:"independent",
@@ -494,7 +493,7 @@ function parseDetail(src,url,html,now){
     cadastralRef,
     locationPrecision,
     hasGarage:POSITIVE.garage.test(text),hasPool:POSITIVE.pool.test(text),
-    stretchBudget:price>SOFT_PRICE,score:0,
+    stretchBudget:price>PREFERRED_PRICE,score:0,
     evidence:{
       price:{evidence:priceInfo.evidence,confidence:priceInfo.confidence,value:price},
       bedrooms:{confidence:items.some(x=>x?.numberOfRooms||x?.numberOfBedrooms||x?.numberOfBedroomsTotal||x?.bedrooms)?"high":"medium",value:bedrooms},
@@ -661,15 +660,15 @@ async function runClassificationPhase(){
     pipelinePhase:"classify",
     revalidation:!!plan.revalidation,
     rules:{
-      preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
+      preferredMaxPrice:PREFERRED_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
       gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
       condition:"ready_to_live",origin:ORIGIN.label
     },
     stats:{
       active:listings.length,
       recent:listings.filter(x=>x.freshnessStatus==="recent").length,
-      under180:listings.filter(x=>x.price<=SOFT_PRICE).length,
-      stretch:listings.filter(x=>x.price>SOFT_PRICE).length,
+      under180:listings.filter(x=>x.price<=PREFERRED_PRICE).length,
+      stretch:listings.filter(x=>x.price>PREFERRED_PRICE).length,
       checkedDetails:items.length,
       rejectionTotals
     },
@@ -802,15 +801,15 @@ async function main(){
     generatedAt:now,
     scanMode:MODE,
     rules:{
-      preferredMaxPrice:SOFT_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
+      preferredMaxPrice:PREFERRED_PRICE,maxPrice:MAX_PRICE,minBedrooms:MIN_BEDROOMS,
       gardenRequired:true,occupiedRejected:true,maxDriveMinutes:MAX_DRIVE_MINUTES,
       condition:"ready_to_live",origin:ORIGIN.label
     },
     stats:{
       active:listings.filter(x=>x.active).length,
       recent:listings.filter(x=>x.active&&x.freshnessStatus==="recent").length,
-      under180:listings.filter(x=>x.active&&x.price<=SOFT_PRICE).length,
-      stretch:listings.filter(x=>x.active&&x.price>SOFT_PRICE).length,
+      under180:listings.filter(x=>x.active&&x.price<=PREFERRED_PRICE).length,
+      stretch:listings.filter(x=>x.active&&x.price>PREFERRED_PRICE).length,
       checkedDetails:MAX_DETAILS-detailBudget,
       rejectionTotals
     },
