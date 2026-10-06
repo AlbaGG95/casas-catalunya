@@ -1,9 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MID_PRICE,MIN_BEDROOMS} from "./search-criteria.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MID_PRICE,MIN_BEDROOMS} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
-const HARD_MAX_PRICE=185000;
-const TARGET_PRICE=180000;
 const PAGE_SIZE=24;
 
 const db=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -197,7 +196,8 @@ function filteredList(){
   a=a.filter(h=>h.bedrooms>=minBeds);
 
   if(b==="180")a=a.filter(h=>h.price<=TARGET_PRICE);
-  else if(b==="185"||b==="smart185")a=a.filter(h=>h.price<=HARD_MAX_PRICE);
+  else if(b==="185")a=a.filter(h=>h.price<=MID_PRICE);
+  else if(b==="190"||b==="smart190")a=a.filter(h=>h.price<=HARD_MAX_PRICE);
 
   if(maxDrive)a=a.filter(h=>h.driveMinutes!=null&&Number(h.driveMinutes)<=maxDrive);
   if(confidence==="high")a=a.filter(h=>h.dataConfidence==="high");
