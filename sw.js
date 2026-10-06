@@ -1,5 +1,5 @@
-const CACHE="casa-catalunya-v5-family-v1";
-const SHELL=["/","/index.html","/property.html","/styles.css","/manifest.webmanifest","/icon.svg"];
+const CACHE="casa-catalunya-v6-ui-v2";
+const SHELL=["/","/index.html","/property.html","/styles.css","/ui-v2.css","/manifest.webmanifest","/icon.svg"];
 
 self.addEventListener("install",e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())
@@ -13,7 +13,7 @@ self.addEventListener("fetch",e=>{
   if(e.request.method!=="GET")return;
   const u=new URL(e.request.url);
 
-  if(u.pathname==="/app.js"||u.pathname==="/property.js"||u.pathname==="/styles.css"||u.hostname.endsWith("supabase.co")||u.hostname==="esm.sh"){
+  if(u.pathname==="/app.js"||u.pathname==="/property.js"||(u.pathname==="/styles.css"||u.pathname==="/ui-v2.css")||u.hostname.endsWith("supabase.co")||u.hostname==="esm.sh"){
     e.respondWith(fetch(e.request,{cache:"no-store"}));
     return;
   }

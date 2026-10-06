@@ -35,7 +35,7 @@ let realtimeChannel=null;
 let visibleLimit=PAGE_SIZE;
 let candidateMap=null;
 let markerLayer=null;
-let mapHidden=localStorage.getItem("mapHidden")==="1";
+let mapHidden=localStorage.getItem("mapHidden")!=="0";
 let compareSelected=new Set(JSON.parse(localStorage.getItem("compareHomes")||"[]"));
 const previousVisitAt=localStorage.getItem("lastVisitAt");
 const visitStartedAt=new Date().toISOString();
@@ -134,47 +134,51 @@ function freshnessBadge(h){
 }
 
 function card(h){
-  const ts=[];
-  ts.push(h.status==="verified"?tag("Documentación verificada","verified"):tag("Candidata","candidate"));
-  const fresh=freshnessBadge(h);if(fresh)ts.push(fresh);
-  if((h.score||0)>=84)ts.push(tag("Buen encaje","fit"));
-  if(stretch(h))ts.push(tag("180–185k","stretch"));
-  if(h.registryStatus!=="verified_clear")ts.push(tag("Nota simple pendiente","pending"));
-  const family=familyInfo(h);
-  if(family?.stage&&family.stage!=="new")ts.push(tag("Familia · "+familyStageLabel(family.stage),familyStageClass(family.stage)));
-  if(Number(family?.average_rating)>0)ts.push(tag("Familia "+Number(family.average_rating).toFixed(1)+"/5","fit"));
-
   const img=safe(h.imageUrl);
-  const media=img
-    ? '<div class="card-media"><img loading="lazy" referrerpolicy="no-referrer" src="'+esc(img)+'" alt=""><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>'
-    : '<div class="card-media"><div class="photo-fallback">Foto disponible en el anuncio original</div><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>';
-
-  const travel=h.driveMinutes!=null?Math.round(h.driveMinutes)+" min aprox.":"Distancia pendiente";
-  const link=safe(h.url);
-  const sv=isSaved(h);
   const place=cleanPlace(h.place)||"Localidad por confirmar";
-  const sourceCount=(h.sources||[]).length||1;
-
+  const travel=h.driveMinutes!=null?Math.round(h.driveMinutes)+" min":"Trayecto pendiente";
+  const link=safe(h.url);
+  const saved=isSaved(h);
+  const family=familyInfo(h);
+  const ready=h.conditionStatus==="confirmed";
+  const independent=h.independentStatus==="confirmed"?"Independiente":h.independentStatus==="probable"?"Prob. independiente":"Tipo por confirmar";
   const timing=h.publishedAt
     ? "Publicado "+fmt(h.publishedAt)
-    : "Publicación desconocida · detectado "+fmt(h.firstSeen);
+    : "Detectado "+fmt(h.firstSeen);
 
-  return '<article class="card">'+media+'<div class="card-body">'+
-    '<div class="card-top"><div class="tags">'+ts.join("")+'</div><div class="card-tools"><button class="compare-chip '+(compareSelected.has(h.dbId)?"selected":"")+'" data-compare="'+esc(h.dbId)+'">'+(compareSelected.has(h.dbId)?"✓ Comparar":"+ Comparar")+'</button><span class="score" title="Puntuación de encaje, no verificación legal">'+esc(h.score||0)+'/100</span></div></div>'+
-    '<div><div class="price">'+euro(h.price)+(stretch(h)?'<small>margen</small>':"")+'</div><h2>'+esc(h.title)+'</h2><div class="place">'+esc(place)+' · '+esc(h.province||"Cataluña")+'</div></div>'+
-    '<div class="features"><span>'+esc(h.bedrooms)+' hab.</span>'+(h.houseM2?'<span>'+esc(h.houseM2)+' m² casa</span>':"")+(h.plotM2?'<span>'+esc(h.plotM2)+' m² parcela</span>':"")+'<span>'+esc(travel)+'</span>'+(h.hasGarage?'<span>Garaje</span>':"")+(h.hasPool?'<span>Piscina</span>':"")+'</div>'+
-    '<p>'+esc(h.summary||"Candidata detectada automáticamente.")+'</p>'+
-    '<div class="checks">'+
-      check("Jardín/parcela detectado","ok")+
-      check(h.independentStatus==="confirmed"?"Independiente confirmada":h.independentStatus==="probable"?"Probablemente independiente":"Independencia por confirmar",h.independentStatus==="confirmed"?"ok":"pending")+
-      check(h.conditionStatus==="confirmed"?"Estado para entrar indicado":"Estado por confirmar",h.conditionStatus==="confirmed"?"ok":"pending")+
-      check(h.occupancyStatus==="confirmed_free"?"Entrega libre indicada":"Sin señales de ocupación; confirmar",h.occupancyStatus==="confirmed_free"?"ok":"pending")+
-      check(h.financingStatus==="compatible"?"Financiación compatible confirmada":"Sin restricción bancaria detectada",h.financingStatus==="compatible"?"ok":"pending")+
-      check(h.registryStatus==="verified_clear"?"Cargas verificadas":h.registryStatus==="claimed_clear"?"Anuncio afirma libre de cargas":"Nota simple pendiente",h.registryStatus==="verified_clear"?"ok":"pending")+
+  const badges=[];
+  badges.push('<span class="home-state '+(ready?"ready":"review")+'">'+(ready?"✓ Lista para entrar indicada":"Pendiente de confirmar")+'</span>');
+  const fresh=freshnessBadge(h);if(fresh)badges.push(fresh);
+  if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–185k</span>');
+  if(family?.stage&&family.stage!=="new")badges.push('<span class="home-state family">'+esc(familyStageLabel(family.stage))+'</span>');
+
+  const media=img
+    ? '<div class="card-media"><img loading="lazy" referrerpolicy="no-referrer" src="'+esc(img)+'" alt=""><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>'
+    : '<div class="card-media"><div class="photo-fallback">Sin foto importada</div><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>';
+
+  const facts=[
+    h.bedrooms+" hab.",
+    h.houseM2?h.houseM2+" m² vivienda":null,
+    h.plotM2?h.plotM2+" m² parcela":"Parcela detectada",
+    independent,
+    travel
+  ].filter(Boolean);
+
+  return '<article class="card home-card">'+media+
+    '<div class="card-body">'+
+      '<div class="home-card-badges">'+badges.join("")+'</div>'+
+      '<div class="home-card-price-row"><div class="price">'+euro(h.price)+'</div><span class="score" title="Encaje con tus criterios">'+esc(h.score||0)+'/100</span></div>'+
+      '<div><h2>'+esc(h.title)+'</h2><div class="place">'+esc(place)+' · '+esc(h.province||"Cataluña")+'</div></div>'+
+      '<div class="home-facts">'+facts.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div>'+
+      '<div class="home-card-meta"><span>'+esc(timing)+'</span><span>Revisado '+fmt(h.lastChecked||h.lastSeen)+'</span></div>'+
+      '<div class="home-card-actions">'+
+        '<button class="save-button '+(saved?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(saved?"★ Guardada":"☆ Guardar")+'</button>'+
+        '<button class="compare-chip '+(compareSelected.has(h.dbId)?"selected":"")+'" data-compare="'+esc(h.dbId)+'">'+(compareSelected.has(h.dbId)?"✓ Comparar":"+ Comparar")+'</button>'+
+        '<a class="detail-link" href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver ficha</a>'+
+        (link?'<a class="source-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir anuncio original">↗</a>':"")+
+      '</div>'+
     '</div>'+
-    '<div class="meta"><span>'+esc(timing)+'</span><span>Revisada '+fmt(h.lastSeen||h.lastChecked)+'</span><span>'+sourceCount+' fuente'+(sourceCount>1?"s":"")+'</span></div>'+
-    '<div class="actions"><button class="'+(sv?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(sv?"★ Guardada":"☆ Guardar")+'</button><a class="detail-link" href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver ficha</a>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Anuncio ↗</a>':"")+'</div>'+
-    '</div></article>';
+  '</article>';
 }
 
 function filteredList(){
