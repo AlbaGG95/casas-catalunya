@@ -146,6 +146,10 @@ Deno.serve(async(req)=>{
       const checkedMs=source?.last_checked?new Date(source.last_checked).getTime():0;
       if(source&&checkedMs&&nowMs-checkedMs<knownFreshMs)continue;
 
+      const fetchedMs=old?.last_fetched_at?new Date(old.last_fetched_at).getTime():0;
+      if(old?.state==="rejected"&&fetchedMs&&nowMs-fetchedMs<48*3600000)continue;
+      if(old?.state==="error"&&fetchedMs&&nowMs-fetchedMs<30*60000)continue;
+
       const plannedMs=old?.last_planned_at?new Date(old.last_planned_at).getTime():0;
       if(!source&&plannedMs&&nowMs-plannedMs<plannedRetryMs)continue;
 
