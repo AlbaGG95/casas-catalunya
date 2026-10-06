@@ -743,8 +743,12 @@ async function main(){
           found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:parsed.reject||"ya no cumple"});
         }
       }
-    }catch{
-      found.set(canonicalListingUrl(old.url),{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
+    }catch(e){
+      if([404,410].includes(Number(e?.status))){
+        found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:"anuncio no disponible"});
+      }else{
+        found.set(canonicalListingUrl(old.url),{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
+      }
     }
     await wait(120);
   }
