@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import * as cheerio from "cheerio";
 import {extractPrice,firstNumber} from "./lib/price-validation.mjs";
 import {MAX_PRICE,MIN_BEDROOMS,MAX_DRIVE_MINUTES,BLOCK_PATTERNS,BAD_CONDITION,blockReason,badConditionReason} from "./lib/safety-rules.mjs";
+import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -523,6 +524,10 @@ function parseDetail(src,url,html,now){
 
   const province=extractProvince(items,src.province);
   const place=extractPlace(items,$,url,src.provider,meta,title);
+  const structuredIdentity=extractStructuredIdentity(items);
+  const cadastralRef=extractExplicitCadastralRef(text+" "+meta);
+  const sourceGeo=extractGeo(items);
+  const locationPrecision=identityPrecision({cadastralRef,address:structuredIdentity,geo:sourceGeo,place});
   const houseM2=extractM2(text,"house",meta),plotM2=extractM2(text,"plot",meta);
   const date=extractPublishedAt(items,$,text,src.kind,now);
   const fresh=freshnessStatus(date.publishedAt,date.evidence,now);
@@ -542,7 +547,11 @@ function parseDetail(src,url,html,now){
     conditionStatus:conditionPositive?"confirmed":"pending",
     fiberStatus:POSITIVE.fiber.test(text)?"confirmed":"pending",
     servicesStatus:POSITIVE.services.test(text)?"confirmed":"pending",
-    travelStatus:"pending",driveMinutes:null,geo:extractGeo(items),
+    travelStatus:"pending",driveMinutes:null,geo:sourceGeo,
+    addressText:structuredIdentity?.streetAddress||null,
+    postalCode:structuredIdentity?.postalCode||null,
+    cadastralRef,
+    locationPrecision,
     hasGarage:POSITIVE.garage.test(text),hasPool:POSITIVE.pool.test(text),
     stretchBudget:price>SOFT_PRICE,score:0,
     evidence:{
@@ -552,7 +561,14 @@ function parseDetail(src,url,html,now){
       independent:{confidence:POSITIVE.independent.test(text)?"high":(/\bchalet\b/i.test(title)&&!/adosad|paread|medianer/i.test(text)?"medium":"unknown")},
       condition:{confidence:conditionPositive?"high":"unknown"},
       occupancy:{confidence:POSITIVE.free.test(text)?"high":"medium"},
-      locality:{confidence:place?"medium":"unknown",value:place||null}
+      locality:{confidence:place?"medium":"unknown",value:place||null},
+      officialIdentity:{
+        confidence:cadastralRef?"high":structuredIdentity?.exact?"high":sourceGeo?"medium":place?"low":"unknown",
+        cadastralRef:cadastralRef||null,
+        streetAddress:structuredIdentity?.streetAddress||null,
+        postalCode:structuredIdentity?.postalCode||null,
+        locationPrecision
+      }
     },
     dataConfidence:"unknown",confidenceScore:0
   };
