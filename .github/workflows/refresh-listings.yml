@@ -101,5 +101,19 @@ jobs:
           OFFICIAL="$(curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/official-checks"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
           echo "$OFFICIAL"
 
-          SERVICES="$(curl -sSf             -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/nearby-services"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data-binary @data/shard.json)"
-          echo "$SERVICES"
+
+  services:
+    if: always() && github.event_name != 'pull_request'
+    needs: [test, scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enriquecer servicios cercanos con caché semanal
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=casas-catalunya-supabase")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | jq -r '.value')"
+          test -n "$OIDC_TOKEN"
+          RESPONSE="$(curl -sSf -X POST             "https://ethtlpnvqyxkoeudtcsj.supabase.co/functions/v1/nearby-services"             -H "Authorization: Bearer ${OIDC_TOKEN}"             -H "Content-Type: application/json"             --data '{"limit":8}')"
+          echo "$RESPONSE"
