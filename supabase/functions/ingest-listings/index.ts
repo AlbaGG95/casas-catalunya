@@ -1,7 +1,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
-import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { evaluateSafetyText, evaluateSafetyDocument, SAFETY_DECISIONS } from "./safety-engine.ts";
 import { nextSourceHealthState } from "./source-health.mjs";
 import { MAX_PRICE, MIN_BEDROOMS, MAX_DRIVE_MINUTES } from "../_shared/search-criteria.ts";
 
@@ -35,13 +35,28 @@ function securityTextOf(l: any) {
   return `${l?.title ?? ""} ${l?.summary ?? ""}`.trim();
 }
 
+function publicEvidence(value: any) {
+  if (!value || typeof value !== "object") return value || {};
+  const copy = JSON.parse(JSON.stringify(value));
+  if (copy?.safety) {
+    delete copy.safety.evidence;
+    delete copy.safety.evidenceDetail;
+  }
+  if (copy?.condition) {
+    delete copy.condition.evidence;
+    delete copy.condition.evidenceDetail;
+  }
+  return copy;
+}
+
 function publicRawPayload(l: any) {
   if (!l || typeof l !== "object") return l;
   const { securityText, ...safePayload } = l;
+  if (safePayload.evidence) safePayload.evidence = publicEvidence(safePayload.evidence);
   return safePayload;
 }
 
-function hardReasons(l: any) {
+function hardValidation(l: any) {
   const reasons: string[] = [];
   const price = Number(l?.price);
   const beds = Number(l?.bedrooms);
@@ -51,14 +66,15 @@ function hardReasons(l: any) {
   if (!["Barcelona","Girona","Tarragona","Lleida"].includes(l?.province)) reasons.push("province");
   if (l?.active === false) reasons.push("inactive");
 
-  const edgeSafety = evaluateSafetyText(text);
+  const edgeSafety = l?.securityText && typeof l.securityText === "object"
+    ? evaluateSafetyDocument(l.securityText)
+    : evaluateSafetyText(text);
   if (edgeSafety.decision === SAFETY_DECISIONS.REJECT) reasons.push("safety:"+edgeSafety.code);
   if (l?.safetyDecision === SAFETY_DECISIONS.REJECT) reasons.push("crawler_safety:"+String(l?.safetyCode||"reject"));
 
   if (l?.travelStatus === "too_far" || Number(l?.driveMinutes) > MAX_DRIVE_MINUTES) reasons.push("too_far");
-  return reasons;
+  return { reasons, safety: edgeSafety };
 }
-
 function confidenceDecision(l: any) {
   const provider = String(l?.provider || "");
   const priceConfidence = ["high","medium","low","unknown"].includes(l?.priceConfidence) ? l.priceConfidence : "unknown";
@@ -168,14 +184,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const reasons = hardReasons(l);
+      const validation = hardValidation(l);
+      const reasons = validation.reasons;
       if (reasons.length) {
         rejected.push({
           provider: l?.provider || null,
           url: l?.url || null,
           canonical_url: l?.url ? normalizeUrl(l.url) : null,
           reason: reasons.join(","),
-          evidence: "edge_hard_validation",
+          evidence: validation.safety?.evidenceDetail?.excerpt || "edge_hard_validation",
           raw_price: Number.isFinite(Number(l?.price)) ? Number(l.price) : null,
           raw_bedrooms: Number.isFinite(Number(l?.bedrooms)) ? Number(l.bedrooms) : null,
           raw_payload: publicRawPayload(l) ?? {},
@@ -334,6 +351,8 @@ Deno.serve(async (req) => {
       .map((l:any) => {
         const canonicalUrl = normalizeUrl(l.url);
         const source = sourceMap.get(canonicalUrl);
+        const decision = evaluateSafetyDocument(l.securityText);
+        const detail = decision.evidenceDetail || {};
         return {
           property_id: propertyMap.get(String(l.id)),
           listing_source_id: source?.id || null,
@@ -346,6 +365,12 @@ Deno.serve(async (req) => {
           safety_text: String(l.securityText.safetyText || "").slice(0, 48000),
           content_hash: String(l.securityText.contentHash),
           extractor_version: Number(l.securityText.version) || 1,
+          safety_decision: decision.decision,
+          safety_code: decision.code,
+          safety_reason: decision.reason,
+          evidence_source: detail.source || null,
+          evidence_match: detail.match ? String(detail.match).slice(0, 300) : null,
+          evidence_excerpt: detail.excerpt ? String(detail.excerpt).slice(0, 260) : null,
           captured_at: l.securityText.capturedAt || l.lastChecked || generatedAt,
           updated_at: generatedAt
         };
