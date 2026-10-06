@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {isDetailUrl,embeddedDetailPatterns,supportedProviders} from "../lib/provider-adapters.mjs";
+import {isDetailUrl,embeddedDetailPatterns,supportedProviders,canonicalListingUrl} from "../lib/provider-adapters.mjs";
 
 const cases=[
   ["Fotocasa","https://www.fotocasa.es/es/comprar/vivienda/barcelona/190785132/d",true],
@@ -27,5 +27,10 @@ assert.ok(habitacliaEmbedded.every(rx=>!rx.test("/comprar/chalet/malgrat/niagara
 assert.ok(supportedProviders().includes("Indomio"));
 assert.ok(embeddedDetailPatterns("Indomio").some(rx=>rx.test("/anuncios/123456789/")));
 assert.equal(new Set(supportedProviders()).size,7);
+
+const fotocasaCanonical="https://www.fotocasa.es/es/comprar/vivienda/obra-nueva/cambrils/20688116/189257737";
+assert.equal(canonicalListingUrl(fotocasaCanonical+"?from=list"),fotocasaCanonical);
+assert.equal(canonicalListingUrl(fotocasaCanonical+"?utm_source=x&utm_medium=y"),fotocasaCanonical);
+assert.equal(canonicalListingUrl(fotocasaCanonical+"#gallery"),fotocasaCanonical);
 
 console.log("Provider adapter tests: OK");
