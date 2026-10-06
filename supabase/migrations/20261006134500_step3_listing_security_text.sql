@@ -40,3 +40,19 @@ create index if not exists listing_security_text_property_idx
 
 create index if not exists listing_security_text_source_idx
   on public.listing_security_text(listing_source_id);
+
+update public.properties
+set evidence = coalesce(evidence,'{}'::jsonb)
+  #- '{safety,evidence}'
+  #- '{safety,evidenceDetail}'
+  #- '{condition,evidence}'
+  #- '{condition,evidenceDetail}'
+where evidence is not null;
+
+update public.listing_sources
+set evidence = coalesce(evidence,'{}'::jsonb)
+  #- '{safety,evidence}'
+  #- '{safety,evidenceDetail}'
+  #- '{condition,evidence}'
+  #- '{condition,evidenceDetail}'
+where evidence is not null;
