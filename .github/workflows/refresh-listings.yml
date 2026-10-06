@@ -43,10 +43,6 @@ on:
       - "system.js"
       - "package.json"
       - ".github/workflows/refresh-listings.yml"
-  schedule:
-    - cron: "*/5 * * * *"
-    - cron: "2 * * * *"
-
 permissions:
   contents: read
   id-token: write
@@ -65,7 +61,7 @@ jobs:
         run: npm test
 
   reclassify:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -83,7 +79,7 @@ jobs:
           echo "$RESPONSE" | jq -e '.processed >= 1'
 
   scan:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: [test, reclassify]
     strategy:
       fail-fast: false
@@ -164,7 +160,7 @@ jobs:
 
 
   revalidate:
-    if: github.event_name != 'pull_request' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.schedule == '2 * * * *')
+    if: github.event_name == 'workflow_dispatch'
     needs: [test, reclassify]
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -211,7 +207,7 @@ jobs:
           printf '%s' "$RESULT" | jq -e '.ok == true'
 
   services:
-    if: always() && github.event_name != 'pull_request'
+    if: always() && github.event_name == 'workflow_dispatch'
     needs: [test, reclassify, scan]
     runs-on: ubuntu-latest
     timeout-minutes: 5
