@@ -1,4 +1,4 @@
-const CACHE="casa-catalunya-v4-search-v1";
+const CACHE="casa-catalunya-v5-family-v1";
 const SHELL=["/","/index.html","/property.html","/styles.css","/manifest.webmanifest","/icon.svg"];
 
 self.addEventListener("install",e=>e.waitUntil(
