@@ -10,7 +10,10 @@ assert.ok(active.every(x=>Number(x.price)<=MAX_PRICE),"Versioned catalogue conta
 assert.ok(active.every(x=>Number(x.bedrooms)>=MIN_BEDROOMS),"Versioned catalogue contains a listing below the bedroom minimum");
 
 const canonical=active.map(x=>canonicalListingUrl(x.url));
-assert.equal(new Set(canonical).size,canonical.length,"Versioned catalogue contains duplicate canonical listing URLs");
+const duplicateGroups=[...new Set(canonical)]
+  .map(url=>({url,items:active.filter(x=>canonicalListingUrl(x.url)===url).map(x=>({id:x.id,provider:x.provider,sourceUrl:x.url}))}))
+  .filter(group=>group.items.length>1);
+assert.equal(duplicateGroups.length,0,"Versioned catalogue contains duplicate canonical listing URLs: "+JSON.stringify(duplicateGroups));
 
 const generatedAt=Date.parse(payload.generatedAt||"");
 assert.ok(Number.isFinite(generatedAt),"Versioned catalogue must expose a valid generatedAt");
