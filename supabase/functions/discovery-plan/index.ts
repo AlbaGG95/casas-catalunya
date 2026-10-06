@@ -79,7 +79,7 @@ Deno.serve(async(req)=>{
           last_fetched_at:now,
           fetch_count:Number(old.fetch_count||0)+1,
           state:outcome,
-          last_error:outcome==="error"?String(x?.reason||"detail_error").slice(0,500):null
+          last_error:outcome==="accepted"?null:String(x?.reason||(outcome==="error"?"detail_error":"rejected")).slice(0,500)
         };
       }).filter((x:any)=>x.canonical_url);
 
