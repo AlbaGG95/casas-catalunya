@@ -144,6 +144,23 @@ function renderFamilyWorkspace(data){
     '</article>'
   ).join(""):'<p class="detail-muted">Todavía no hay opiniones familiares sobre esta vivienda.</p>';
 
+  const activity=Array.isArray(familyWorkspaceData.activity)?familyWorkspaceData.activity:[];
+  $("#familyActivityList").innerHTML=activity.length?activity.map(x=>{
+    const who=x.display_name||"Familia";
+    let message="Actualización familiar";
+    if(x.event_type==="status"){
+      const from=x.from_stage?familyStageLabel(x.from_stage):null;
+      const to=familyStageLabel(x.to_stage);
+      message=from&&from!==to?"cambió "+from+" → "+to:"marcó "+to;
+    }else if(x.event_type==="feedback"){
+      const rating=x.payload?.rating?x.payload.rating+"/5":"sin nota";
+      message="actualizó su opinión · "+rating+" · "+familyVerdictLabel(x.payload?.verdict);
+    }else if(x.event_type==="feedback_removed"){
+      message="borró su opinión";
+    }
+    return '<article class="family-activity-item"><span class="family-activity-dot"></span><div><strong>'+esc(who)+'</strong><p>'+esc(message)+'</p><small>'+fmt(x.created_at)+'</small></div></article>';
+  }).join(""):'<p class="detail-muted">Todavía no hay actividad registrada.</p>';
+
   $("#familyMemberLabel").textContent=familyMemberName||"Sin nombre en este dispositivo";
   familySaved=!!status.favorite;
   const saveBtn=$("#detailSave");
