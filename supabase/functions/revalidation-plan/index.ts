@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
+import { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO="AlbaGG95/casas-catalunya";
 const ALLOWED_REF="refs/heads/main";
@@ -130,22 +131,33 @@ Deno.serve(async(req)=>{
       `)
       .eq("active",true)
       .in("properties.status",["candidate","verified"])
-      .lte("properties.price",185000)
-      .gte("properties.bedrooms",3)
+      .lte("properties.price",MAX_PRICE)
+      .gte("properties.bedrooms",MIN_BEDROOMS)
       .order("last_revalidation_at",{ascending:true,nullsFirst:true})
       .order("last_checked",{ascending:true})
       .limit(300);
     if(error)throw error;
 
+    const {data:securityRows,error:securityError}=await supabase
+      .from("listing_security_text")
+      .select("property_id");
+    if(securityError)throw securityError;
+    const securityPropertyIds=new Set((securityRows||[]).map((x:any)=>x.property_id));
+
     const nowMs=new Date(now).getTime();
-    const due=(data||[]).filter((row:any)=>{
-      const p=Array.isArray(row.properties)?row.properties[0]:row.properties;
-      if(!p)return false;
-      const ref=row.last_revalidation_at||row.last_checked||p.last_seen;
-      const age=ref?nowMs-new Date(ref).getTime():Infinity;
-      const maxAge=p.safety_decision==="REVIEW"?6*3600000:12*3600000;
-      return age>=maxAge;
-    }).slice(0,limit);
+    const due=(data||[])
+      .map((row:any)=>({...row,needsSecurityBackfill:!securityPropertyIds.has(row.property_id)}))
+      .filter((row:any)=>{
+        const p=Array.isArray(row.properties)?row.properties[0]:row.properties;
+        if(!p)return false;
+        if(row.needsSecurityBackfill)return true;
+        const ref=row.last_revalidation_at||row.last_checked||p.last_seen;
+        const age=ref?nowMs-new Date(ref).getTime():Infinity;
+        const maxAge=p.safety_decision==="REVIEW"?6*3600000:12*3600000;
+        return age>=maxAge;
+      })
+      .sort((a:any,b:any)=>Number(b.needsSecurityBackfill)-Number(a.needsSecurityBackfill))
+      .slice(0,limit);
 
     const items=due.map((row:any)=>{
       const p=Array.isArray(row.properties)?row.properties[0]:row.properties;
