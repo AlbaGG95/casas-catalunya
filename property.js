@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE} from "./search-criteria.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MIN_BEDROOMS} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
@@ -613,7 +613,7 @@ async function load(){
     .eq("id",id)
     .in("status",["candidate","verified"])
     .lte("price",HARD_MAX_PRICE)
-    .gte("bedrooms",3)
+    .gte("bedrooms",MIN_BEDROOMS)
     .maybeSingle();
 
   if(error){
