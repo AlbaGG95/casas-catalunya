@@ -20,7 +20,8 @@ const els={
   confidence:$("#confidenceFilter"),extra:$("#extraFilter"),map:$("#candidateMap"),
   mapMeta:$("#mapMeta"),toggleMap:$("#toggleMap"),compareDock:$("#compareDock"),
   compareCount:$("#compareCount"),openCompare:$("#openCompare"),clearCompare:$("#clearCompare"),
-  compareModal:$("#compareModal"),compareWrap:$("#compareTableWrap")
+  compareModal:$("#compareModal"),compareWrap:$("#compareTableWrap"),
+  allSafetyCount:$("#allSafetyCount"),compatibleCount:$("#compatibleCount"),reviewCount:$("#reviewCount")
 };
 
 let payload={listings:[],sourceStatus:{}};
@@ -37,6 +38,8 @@ let candidateMap=null;
 let markerLayer=null;
 let mapHidden=localStorage.getItem("mapHidden")!=="0";
 let compareSelected=new Set(JSON.parse(localStorage.getItem("compareHomes")||"[]"));
+let safetyView=localStorage.getItem("safetyView")||"all";
+if(!["all","compatible","review"].includes(safetyView))safetyView="all";
 const previousVisitAt=localStorage.getItem("lastVisitAt");
 const visitStartedAt=new Date().toISOString();
 localStorage.setItem("lastVisitAt",visitStartedAt);
@@ -59,7 +62,8 @@ const candidate=h=>
   Number(h.price)<=HARD_MAX_PRICE &&
   Number(h.bedrooms)>=3 &&
   h.occupancyStatus!=="blocked" &&
-  h.financingStatus!=="blocked";
+  h.financingStatus!=="blocked" &&
+  h.safetyDecision!=="REJECT";
 
 const publishedAge=h=>h.publishedAt?hours(h.publishedAt):Infinity;
 const detectedAge=h=>hours(h.firstSeen);
@@ -140,14 +144,15 @@ function card(h){
   const link=safe(h.url);
   const saved=isSaved(h);
   const family=familyInfo(h);
-  const ready=h.conditionStatus==="confirmed";
+  const compatible=h.safetyDecision==="ACCEPT";
+  const ready=compatible;
   const independent=h.independentStatus==="confirmed"?"Independiente":h.independentStatus==="probable"?"Prob. independiente":"Tipo por confirmar";
   const timing=h.publishedAt
     ? "Publicado "+fmt(h.publishedAt)
     : "Detectado "+fmt(h.firstSeen);
 
   const badges=[];
-  badges.push('<span class="home-state '+(ready?"ready":"review")+'">'+(ready?"✓ Lista para entrar indicada":"Pendiente de confirmar")+'</span>');
+  badges.push('<span class="home-state '+(compatible?"ready":"review")+'">'+(compatible?"✓ Compatible":"Por verificar")+'</span>');
   const fresh=freshnessBadge(h);if(fresh)badges.push(fresh);
   if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–185k</span>');
   if(family?.stage&&family.stage!=="new")badges.push('<span class="home-state family">'+esc(familyStageLabel(family.stage))+'</span>');
@@ -202,6 +207,9 @@ function filteredList(){
   if(extra==="pool")a=a.filter(h=>h.hasPool);
   if(extra==="services")a=a.filter(servicesKnown);
   if(extra==="mapped")a=a.filter(hasCoords);
+
+  if(safetyView==="compatible")a=a.filter(h=>h.safetyDecision==="ACCEPT");
+  if(safetyView==="review")a=a.filter(h=>h.safetyDecision==="REVIEW");
 
   if(s==="new")a=a.filter(isRecent);
   if(s==="since-visit")a=a.filter(newSinceVisit);
@@ -368,12 +376,18 @@ function render(){
   els.empty.hidden=!!a.length;
 
   const all=dedupeListings((payload.listings||[]).filter(candidate));
+  const compatibleAll=all.filter(h=>h.safetyDecision==="ACCEPT");
+  const reviewAll=all.filter(h=>h.safetyDecision==="REVIEW");
   const bootstrapping=all.length===0&&Object.keys(payload.sourceStatus||{}).length===0;
 
   els.visible.textContent=bootstrapping?"—":a.length;
   els.newCount.textContent=bootstrapping?"—":all.filter(isRecent).length;
   els.under180.textContent=bootstrapping?"—":all.filter(h=>h.price<=TARGET_PRICE).length;
   els.savedCount.textContent=familyCode?familySaved.size:localSaved.size;
+  if(els.allSafetyCount)els.allSafetyCount.textContent=bootstrapping?"—":all.length;
+  if(els.compatibleCount)els.compatibleCount.textContent=bootstrapping?"—":compatibleAll.length;
+  if(els.reviewCount)els.reviewCount.textContent=bootstrapping?"—":reviewAll.length;
+  document.querySelectorAll("[data-safety-view]").forEach(btn=>btn.classList.toggle("active",btn.dataset.safetyView===safetyView));
 
   if(bootstrapping){
     els.empty.hidden=false;
@@ -457,6 +471,9 @@ function transformProperty(row){
     hasGarage:row.has_garage,
     hasPool:row.has_pool,
     score:Number(row.score)||0,
+    safetyDecision:row.safety_decision||"REVIEW",
+    safetyReason:row.safety_reason||null,
+    safetyCode:row.safety_code||null,
     priceConfidence:row.price_confidence,
     dataConfidence:row.data_confidence,
     confidenceScore:Number(row.confidence_score)||0,
@@ -598,6 +615,12 @@ function subscribeRealtime(){
   render();
 }));
 els.loadMore.addEventListener("click",()=>{visibleLimit+=PAGE_SIZE;render()});
+document.querySelectorAll("[data-safety-view]").forEach(btn=>btn.addEventListener("click",()=>{
+  safetyView=btn.dataset.safetyView||"all";
+  localStorage.setItem("safetyView",safetyView);
+  visibleLimit=PAGE_SIZE;
+  render();
+}));
 els.familyBtn?.addEventListener("click",connectFamily);
 els.alertBtn?.addEventListener("click",enableAlerts);
 els.toggleMap?.addEventListener("click",()=>{
