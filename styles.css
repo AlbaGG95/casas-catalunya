@@ -34,3 +34,26 @@
 @media(max-width:900px){.advanced-filters{grid-template-columns:1fr 1fr}.candidate-map{height:350px}.nearby-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.map-head{align-items:flex-start;flex-direction:column}.map-head-actions{width:100%;justify-content:space-between}.candidate-map{height:310px}.compare-dock{gap:10px}.compare-dock>div:first-child span{display:none}.header-actions{gap:7px}.header-actions .family-button{padding:7px 8px}.nearby-grid{grid-template-columns:1fr}}
 @media(max-width:480px){.advanced-filters{grid-template-columns:1fr}.card-top{align-items:flex-start}.card-tools{flex-direction:column;align-items:flex-end}.compare-dock{bottom:8px;min-width:calc(100vw - 16px)}}
+
+.family-workspace-panel{border-color:#d8e7de;background:linear-gradient(180deg,#ffffff 0%,#fbfdfb 100%)}
+.family-inline-button{border:1px solid var(--line);background:#fff;color:var(--green);border-radius:9px;padding:7px 9px;font-size:10px;font-weight:850;cursor:pointer}
+.family-inline-button.connected{background:#e7f4eb;border-color:#c7e4d1;color:#1d6840}
+.family-empty{font-size:10.5px;line-height:1.55;color:var(--muted);border:1px dashed #d7e2dc;border-radius:11px;padding:11px;background:#f9fbfa}
+.family-member-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border:1px solid #e7ece9;border-radius:10px;background:#f8faf8;margin-bottom:10px}
+.family-member-line span,.family-member-line strong{display:block}.family-member-line span{font-size:9px;color:var(--muted)}.family-member-line strong{font-size:11px;margin-top:2px}
+.family-member-line button{border:0;background:transparent;color:var(--green);font-size:9px;font-weight:850;cursor:pointer}
+.family-field{display:block;margin-bottom:9px}.family-field>span{display:block;font-size:9px;color:var(--muted);font-weight:800;margin-bottom:4px}
+.family-field select,.family-field input,.family-field textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:8px 9px;font:inherit;font-size:10.5px;outline:none}
+.family-field textarea{resize:vertical;min-height:68px;line-height:1.45}
+.family-field select:focus,.family-field input:focus,.family-field textarea:focus{border-color:#80a695;box-shadow:0 0 0 3px #dcece4}
+.family-feedback-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.family-primary-button,.family-secondary-button{border-radius:9px;padding:9px 11px;font-size:10px;font-weight:850;cursor:pointer}
+.family-primary-button{border:1px solid var(--green);background:var(--green);color:#fff}.family-secondary-button{border:1px solid var(--line);background:#fff;color:#526058}
+.family-primary-button:disabled,.family-secondary-button:disabled{opacity:.5;cursor:not-allowed}
+.family-feedback-divider{height:1px;background:var(--line);margin:14px 0}
+.family-feedback-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:8px}.family-feedback-head span{font-size:9px;color:var(--muted);font-weight:800}.family-feedback-head h3{font-size:14px;margin:2px 0 0}.family-feedback-head>span:last-child{font-size:10px;color:var(--green)}
+.family-feedback-actions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.family-feedback-list{display:flex;flex-direction:column;gap:7px}.family-feedback-item{border:1px solid #e7ece9;border-radius:10px;padding:9px;background:#fafbfa}.family-feedback-item.mine{background:#f0f8f3;border-color:#d8eadf}
+.family-feedback-item>div{display:flex;justify-content:space-between;gap:8px}.family-feedback-item strong{font-size:10.5px}.family-feedback-item>div span{font-size:9.5px;color:var(--green);font-weight:800}.family-feedback-item p{font-size:10px;line-height:1.45;color:#536159;margin:6px 0}.family-feedback-item small{display:block;font-size:8.5px;color:var(--muted)}
+.tag.family-stage{background:#eef4f0;color:#355c49}.family-summary-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}.family-summary-line span{font-size:9px;color:var(--muted)}
+@media(max-width:700px){.family-feedback-grid{grid-template-columns:1fr}.family-feedback-actions>*{flex:1 1 160px}}
