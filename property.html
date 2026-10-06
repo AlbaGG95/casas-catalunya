@@ -30,9 +30,9 @@
     </div>
   </header>
 
-  <div id="detailError" class="empty detail-error" hidden></div>
+  <div id="detailError" class="empty detail-error" role="alert" hidden></div>
 
-  <main id="propertyDetail" hidden>
+  <main id="propertyDetail" tabindex="-1" hidden>
     <section class="detail-hero">
       <div id="detailMedia" class="detail-media"></div>
       <div class="detail-summary">
@@ -43,7 +43,7 @@
         <p id="detailDescription" class="detail-description"></p>
 
         <div class="detail-actions">
-          <button id="detailSave" class="detail-action secondary">☆ Guardar</button>
+          <button id="detailSave" class="detail-action secondary" type="button">☆ Guardar</button>
           <a id="primarySourceLink" class="detail-action primary" href="#" target="_blank" rel="noopener noreferrer">Ver anuncio original</a>
         </div>
 
@@ -128,7 +128,7 @@
         <section class="detail-panel family-workspace-panel">
           <div class="detail-panel-head">
             <div><span>FAMILIA</span><h2>Seguimiento compartido</h2></div>
-            <button id="familyConnectDetail" class="family-inline-button">Conectar</button>
+            <button id="familyConnectDetail" class="family-inline-button" type="button">Conectar</button>
           </div>
 
           <div id="familyDisconnected" class="family-empty">
