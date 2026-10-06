@@ -123,6 +123,101 @@
       </div>
 
       <aside class="detail-side">
+        <section class="detail-panel family-workspace-panel">
+          <div class="detail-panel-head">
+            <div><span>FAMILIA</span><h2>Seguimiento compartido</h2></div>
+            <button id="familyConnectDetail" class="family-inline-button">Conectar</button>
+          </div>
+
+          <div id="familyDisconnected" class="family-empty">
+            Conecta el código familiar para compartir estado, notas y valoraciones de esta vivienda.
+          </div>
+
+          <div id="familyWorkspace" hidden>
+            <div class="family-member-line">
+              <div><span>Miembro actual</span><strong id="familyMemberLabel">—</strong></div>
+              <button id="familyRenameMember" type="button">Cambiar nombre</button>
+            </div>
+
+            <label class="family-field">
+              <span>Estado de la vivienda</span>
+              <select id="familyStage">
+                <option value="new">Nueva</option>
+                <option value="contact">Contactar</option>
+                <option value="visit_requested">Visita solicitada</option>
+                <option value="visited">Visitada</option>
+                <option value="negotiating">Negociando</option>
+                <option value="offer">Oferta realizada</option>
+                <option value="discarded">Descartada</option>
+              </select>
+            </label>
+
+            <label id="familyVisitField" class="family-field">
+              <span>Fecha de visita</span>
+              <input id="familyVisitAt" type="datetime-local">
+            </label>
+
+            <label id="familyOfferField" class="family-field">
+              <span>Importe de oferta</span>
+              <input id="familyOfferAmount" type="number" min="1" max="185000" step="500" placeholder="Ej. 180000">
+            </label>
+
+            <label id="familyDiscardField" class="family-field">
+              <span>Motivo de descarte</span>
+              <input id="familyDiscardReason" type="text" maxlength="500" placeholder="Ej. demasiado lejos o necesita reforma">
+            </label>
+
+            <label class="family-field">
+              <span>Nota compartida de la vivienda</span>
+              <textarea id="familySharedNotes" maxlength="2000" rows="3" placeholder="Ej. llamar el lunes, preguntar por tejado, confirmar cédula…"></textarea>
+            </label>
+
+            <button id="familySaveProgress" class="family-primary-button" type="button">Guardar seguimiento</button>
+
+            <div class="family-feedback-divider"></div>
+
+            <div class="family-feedback-head">
+              <div><span>MI OPINIÓN</span><h3>Valoración personal</h3></div>
+              <span id="familyAverage">Sin votos</span>
+            </div>
+
+            <div class="family-feedback-grid">
+              <label class="family-field">
+                <span>Nota</span>
+                <select id="familyRating">
+                  <option value="">Sin nota</option>
+                  <option value="5">5 · Me encanta</option>
+                  <option value="4">4 · Muy buena</option>
+                  <option value="3">3 · Puede encajar</option>
+                  <option value="2">2 · Poco convencido/a</option>
+                  <option value="1">1 · No me convence</option>
+                </select>
+              </label>
+              <label class="family-field">
+                <span>Veredicto</span>
+                <select id="familyVerdict">
+                  <option value="">Sin veredicto</option>
+                  <option value="yes">Sí</option>
+                  <option value="maybe">Duda</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="family-field">
+              <span>Mi comentario</span>
+              <textarea id="familyPersonalNote" maxlength="2000" rows="3" placeholder="Qué te gusta, qué no y qué preguntarías en la visita."></textarea>
+            </label>
+
+            <div class="family-feedback-actions">
+              <button id="familySaveFeedback" class="family-primary-button" type="button">Guardar mi opinión</button>
+              <button id="familyDeleteFeedback" class="family-secondary-button" type="button">Borrar mi opinión</button>
+            </div>
+
+            <div id="familyFeedbackList" class="family-feedback-list"></div>
+          </div>
+        </section>
+
         <section class="detail-panel sticky-detail">
           <div class="detail-panel-head">
             <div><span>CHECKLIST</span><h2>Antes de reservar</h2></div>
