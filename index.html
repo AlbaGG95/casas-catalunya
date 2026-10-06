@@ -1,11 +1,95 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e2c22"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Casa Cataluña"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/icon.svg"><title>Casa Cataluña</title><meta name="description" content="Buscador familiar de casas habitables en Cataluña"><link rel="stylesheet" href="/styles.css"></head><body>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0e2c22">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Casa Cataluña">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <title>Casa Cataluña</title>
+  <meta name="description" content="Buscador familiar de casas habitables en Cataluña">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
 <div class="app">
-<header class="topbar"><div class="brand"><div class="logo">CC</div><div><strong>Casa Cataluña</strong><span>Buscador familiar</span></div></div><div class="live"><i></i><span id="updatedAt">Sincronizando…</span></div></header>
-<section class="hero"><div class="hero-copy"><span class="kicker">HIPOTECA APROBADA · VIVIENDA HABITUAL</span><h1>Encontrar casa sin perder tiempo con anuncios inviables.</h1><p>Hasta 180.000 € como objetivo y hasta 185.000 € si merece claramente la pena. 3+ habitaciones, jardín, preferencia independiente, habitable y sin señales de ocupación o restricciones de financiación.</p></div><div class="hero-stats"><div><span>Viables</span><strong id="visibleCount">0</strong></div><div><span>Recientes</span><strong id="newCount">0</strong></div><div><span>≤ 180k</span><strong id="under180Count">0</strong></div><div><span>Guardadas</span><strong id="savedCount">0</strong></div></div></section>
-<section class="status"><div><b>Escaneo</b><span id="lastScan">—</span></div><div><b>Fuentes</b><span id="sourceHealth">—</span></div><div><b>Frecuencia</b><span>novedades ~5 min · barrido completo cada hora</span></div></section>
-<section class="notice"><b>Seguridad de compra:</b> la app descarta señales explícitas de ocupación, inquilinos, nuda propiedad, subasta, proindiviso, no hipotecable y reforma fuerte. Las cargas registrales solo pueden confirmarse con nota simple; por eso se muestran como “pendiente” hasta verificar.</section>
-<section class="toolbar"><div class="search"><input id="searchInput" type="search" placeholder="Buscar localidad, urbanización…"></div><select id="provinceFilter"><option value="">Toda Cataluña</option><option>Barcelona</option><option>Girona</option><option>Tarragona</option><option>Lleida</option></select><select id="budgetFilter"><option value="smart185">180k + margen 185k</option><option value="180">Máx. 180k</option><option value="185">Máx. 185k</option></select><select id="statusFilter"><option value="">Todas viables</option><option value="new">Recientes</option><option value="best">Mejor encaje</option><option value="independent">Independiente confirmada</option><option value="free">Libre indicada</option><option value="pending">Pendientes</option><option value="saved">Guardadas</option></select><select id="sortFilter"><option value="recent">Más recientes</option><option value="score">Mejor encaje</option><option value="price-asc">Precio ↑</option><option value="price-desc">Precio ↓</option></select></section>
-<div class="section-head"><div><span>RESULTADOS</span><h2>Casas candidatas</h2></div><p>Se actualiza sin recargar la página.</p></div>
-<main id="listingGrid" class="grid" aria-live="polite"></main><div id="emptyState" class="empty" hidden>No hay resultados con estos filtros ahora mismo. El rastreador sigue buscando.</div>
-<section class="rules"><article><b>Bloqueo automático</b><p>Ocupación, alquiler, deuda/cesión, nuda propiedad, subasta, proindiviso, no visitable, no hipotecable o reforma importante.</p></article><article><b>Encaje familiar</b><p>3+ habitaciones, jardín/parcela, vivienda habitable, presupuesto y distancia razonable desde 08032.</p></article><article><b>Verificación final</b><p>Nota simple, cédula, urbanismo, suministros, fibra y entrega libre antes de reservar.</p></article></section>
-<footer>Uso familiar · Los anuncios enlazan siempre a la fuente original.</footer></div><div id="toast" class="toast" hidden></div><script type="module" src="/app.js"></script></body></html>
+  <header class="topbar">
+    <div class="brand"><div class="logo">CC</div><div><strong>Casa Cataluña</strong><span>Buscador familiar</span></div></div>
+    <div class="live"><i></i><span id="updatedAt">Sincronizando…</span></div>
+  </header>
+
+  <section class="hero compact">
+    <div class="hero-copy">
+      <span class="kicker">VIVIENDA HABITUAL · TOPE ABSOLUTO 185.000 €</span>
+      <h1>Casas que merece la pena revisar.</h1>
+      <p>Objetivo 180.000 € y margen máximo hasta 185.000 €. Nunca se muestran viviendas por encima del límite seleccionado.</p>
+    </div>
+    <div class="hero-stats">
+      <div><span>Compatibles</span><strong id="visibleCount">—</strong></div>
+      <div><span>Recientes</span><strong id="newCount">—</strong></div>
+      <div><span>≤ 180k</span><strong id="under180Count">—</strong></div>
+      <div><span>Guardadas*</span><strong id="savedCount">0</strong></div>
+    </div>
+  </section>
+
+  <section class="status">
+    <div><b>Último escaneo</b><span id="lastScan">—</span></div>
+    <div><b>Fuentes</b><span id="sourceHealth">—</span></div>
+    <div><b>Actualización</b><span>Realtime + comprobación cada 60 s</span></div>
+  </section>
+
+  <section class="notice">
+    <b>Filtro de seguridad:</b> se excluyen señales de ocupación, alquiler vigente, nuda propiedad, proindiviso, subasta,
+    no hipotecable, adosadas/pareadas, rústicas y viviendas con reforma importante. Una carga registral solo se considera
+    verificada cuando existe comprobación documental.
+  </section>
+
+  <section class="toolbar" aria-label="Filtros">
+    <input id="searchInput" type="search" placeholder="Localidad, urbanización o título…">
+    <select id="provinceFilter">
+      <option value="">Toda Cataluña</option><option>Barcelona</option><option>Girona</option><option>Tarragona</option><option>Lleida</option>
+    </select>
+    <select id="budgetFilter">
+      <option value="smart185">Objetivo 180k · tope 185k</option>
+      <option value="180">Máximo 180.000 €</option>
+      <option value="185">Máximo 185.000 €</option>
+    </select>
+    <select id="statusFilter">
+      <option value="">Todas compatibles</option>
+      <option value="new">Nuevas / detectadas recientemente</option>
+      <option value="best">Mejor encaje</option>
+      <option value="verified">Documentación verificada</option>
+      <option value="independent">Independiente o probable</option>
+      <option value="pending">Con verificaciones pendientes</option>
+      <option value="saved">Guardadas</option>
+    </select>
+    <select id="sortFilter">
+      <option value="recent">Más recientes</option><option value="score">Mejor encaje</option><option value="price-asc">Precio ↑</option><option value="price-desc">Precio ↓</option>
+    </select>
+  </section>
+
+  <div class="section-head">
+    <div><span>RESULTADOS</span><h2>Casas candidatas</h2></div>
+    <p id="resultMeta">Cargando…</p>
+  </div>
+
+  <main id="listingGrid" class="grid" aria-live="polite"></main>
+  <div id="emptyState" class="empty" hidden></div>
+  <button id="loadMore" class="load-more" hidden>Mostrar más casas</button>
+
+  <section class="rules">
+    <article><b>🔒 Bloqueo duro</b><p>Precio, ocupación, alquiler, subasta, proindiviso, no hipotecable, adosada/pareada, rústica o reforma importante.</p></article>
+    <article><b>🟡 Pendiente ≠ descartada</b><p>Fibra, nota simple, independencia exacta o estado no se inventan. Si faltan datos, se marcan como pendientes.</p></article>
+    <article><b>✅ Verificación final</b><p>Antes de reservar: visita, nota simple, cédula, urbanismo, suministros y aprobación bancaria final.</p></article>
+  </section>
+
+  <footer>* Las guardadas siguen siendo locales a este dispositivo hasta activar el acceso familiar compartido.</footer>
+</div>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
