@@ -13,6 +13,21 @@ on:
     branches: ["main"]
     paths:
       - "scripts/**"
+      - "app.js"
+      - "property.js"
+      - "property.html"
+      - "styles.css"
+      - "package.json"
+      - ".github/workflows/refresh-listings.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "scripts/**"
+      - "app.js"
+      - "property.js"
+      - "property.html"
+      - "styles.css"
+      - "package.json"
       - ".github/workflows/refresh-listings.yml"
   schedule:
     - cron: "*/5 * * * *"
@@ -36,6 +51,7 @@ jobs:
         run: npm test
 
   scan:
+    if: github.event_name != 'pull_request'
     needs: test
     strategy:
       fail-fast: false

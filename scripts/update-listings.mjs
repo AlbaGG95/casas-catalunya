@@ -437,27 +437,33 @@ function confidenceOf(x){
   };
 }
 
-function scoreOf(x,text){
-  let s=28;
-  if(x.price<=SOFT_PRICE)s+=12;else s+=4;
-  if(x.bedrooms>=4)s+=7;else s+=4;
-  if(x.independentStatus==="confirmed")s+=16;else if(x.independentStatus==="probable")s+=11;else s+=5;
-  if(x.conditionStatus==="confirmed")s+=13;
-  if(x.occupancyStatus==="confirmed_free")s+=6;else s+=2;
-  if(x.registryStatus==="claimed_clear")s+=4;
-  if(x.fiberStatus==="confirmed")s+=4;
-  if(x.servicesStatus==="confirmed")s+=4;
+function scoreBreakdownOf(x,text){
+  const parts=[{key:"base",label:"Base de encaje",points:28}];
+  parts.push({key:"budget",label:x.price<=SOFT_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–185k",points:x.price<=SOFT_PRICE?12:4});
+  parts.push({key:"bedrooms",label:x.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:x.bedrooms>=4?7:4});
+  parts.push({
+    key:"independent",
+    label:x.independentStatus==="confirmed"?"Independiente confirmada":x.independentStatus==="probable"?"Probablemente independiente":"Independencia pendiente",
+    points:x.independentStatus==="confirmed"?16:x.independentStatus==="probable"?11:5
+  });
+  if(x.conditionStatus==="confirmed")parts.push({key:"condition",label:"Estado para entrar indicado",points:13});
+  parts.push({key:"occupancy",label:x.occupancyStatus==="confirmed_free"?"Entrega libre indicada":"Sin señales de ocupación",points:x.occupancyStatus==="confirmed_free"?6:2});
+  if(["claimed_clear","verified_clear"].includes(x.registryStatus))parts.push({key:"registry",label:x.registryStatus==="verified_clear"?"Cargas verificadas":"Anuncio afirma libre de cargas",points:4});
+  if(x.fiberStatus==="confirmed")parts.push({key:"fiber",label:"Fibra mencionada",points:4});
+  if(x.servicesStatus==="confirmed")parts.push({key:"services",label:"Servicios cercanos indicados",points:4});
   if(x.travelStatus==="confirmed"){
-    if(x.driveMinutes<=60)s+=8;
-    else if(x.driveMinutes<=75)s+=5;
-    else s+=2;
+    const pts=x.driveMinutes<=60?8:x.driveMinutes<=75?5:2;
+    parts.push({key:"travel",label:`Trayecto aproximado ${Math.round(x.driveMinutes)} min`,points:pts});
   }
-  if(x.plotM2>=400)s+=5;
-  if(x.houseM2>=90)s+=3;
-  if(x.freshnessStatus==="recent")s+=6;
-  if(POSITIVE.garage.test(text))s+=2;
-  if(POSITIVE.pool.test(text))s+=1;
-  return Math.min(100,s);
+  if(x.plotM2>=400)parts.push({key:"plot",label:"Parcela ≥400 m²",points:5});
+  if(x.houseM2>=90)parts.push({key:"house",label:"Vivienda ≥90 m²",points:3});
+  if(x.freshnessStatus==="recent")parts.push({key:"freshness",label:"Anuncio reciente",points:6});
+  if(POSITIVE.garage.test(text))parts.push({key:"garage",label:"Garaje",points:2});
+  if(POSITIVE.pool.test(text))parts.push({key:"pool",label:"Piscina",points:1});
+  return parts;
+}
+function scoreOf(x,text){
+  return Math.min(100,scoreBreakdownOf(x,text).reduce((sum,p)=>sum+p.points,0));
 }
 async function geocodePlace(place,province,cache){
   if(!place)return null;
@@ -551,6 +557,7 @@ function parseDetail(src,url,html,now){
     dataConfidence:"unknown",confidenceScore:0
   };
   listing.score=scoreOf(listing,text);
+  listing.evidence.scoreBreakdown=scoreBreakdownOf(listing,text);
   const confidence=confidenceOf(listing);
   listing.confidenceScore=confidence.score;
   listing.dataConfidence=confidence.level;
@@ -649,6 +656,7 @@ async function main(){
           if(listing.travelStatus==="too_far")found.set(old.url,{...old,active:false,lastChecked:now,removalReason:"más de 1h30"});
           else{
             listing.score=scoreOf(listing,text);
+            listing.evidence={...(listing.evidence||{}),scoreBreakdown:scoreBreakdownOf(listing,text)};
             const confidence=confidenceOf(listing);
             listing.confidenceScore=confidence.score;
             listing.dataConfidence=confidence.level;
