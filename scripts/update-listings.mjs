@@ -63,7 +63,7 @@ async function fetchHtml(url){
   const timer=setTimeout(()=>ctrl.abort(),18000);
   try{
     const r=await fetch(url,{headers:{"user-agent":UA,"accept-language":"es-ES,es;q=.9,en;q=.5"},redirect:"follow",signal:ctrl.signal});
-    if(!r.ok)throw new Error("HTTP "+r.status);
+    if(!r.ok){const error=new Error("HTTP "+r.status);error.status=r.status;throw error;}
     const ct=r.headers.get("content-type")||"";
     if(!ct.includes("text/html"))throw new Error("not html");
     return await r.text();
@@ -743,8 +743,12 @@ async function main(){
           found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:parsed.reject||"ya no cumple"});
         }
       }
-    }catch{
-      found.set(canonicalListingUrl(old.url),{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
+    }catch(e){
+      if([404,410].includes(Number(e?.status))){
+        found.set(canonicalListingUrl(old.url),{...old,active:false,lastChecked:now,removalReason:"anuncio no disponible"});
+      }else{
+        found.set(canonicalListingUrl(old.url),{...old,lastCheckFailedAt:now,lastChecked:now,active:old.active!==false});
+      }
     }
     await wait(120);
   }
