@@ -114,7 +114,8 @@ Deno.serve(async (req) => {
     });
 
     const sourceSummary = aggregateSourceStatus(body?.sourceStatus || {});
-    const providers = [...new Set([
+    const skipSourceHealth = body?.revalidation === true;
+    const providers = skipSourceHealth ? [] : [...new Set([
       ...[...sourceSummary.keys()],
       ...listings.map((l:any) => String(l?.provider || "")).filter(Boolean)
     ])];
