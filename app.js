@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import * as L from "https://esm.sh/leaflet@1.9.4";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
@@ -15,7 +16,12 @@ const els={
   sort:$("#sortFilter"),visible:$("#visibleCount"),newCount:$("#newCount"),
   under180:$("#under180Count"),savedCount:$("#savedCount"),updatedAt:$("#updatedAt"),
   lastScan:$("#lastScan"),sourceHealth:$("#sourceHealth"),toast:$("#toast"),
-  loadMore:$("#loadMore"),resultMeta:$("#resultMeta"),familyBtn:$("#familyButton")
+  loadMore:$("#loadMore"),resultMeta:$("#resultMeta"),familyBtn:$("#familyButton"),
+  alertBtn:$("#alertButton"),bedrooms:$("#bedroomFilter"),drive:$("#driveFilter"),
+  confidence:$("#confidenceFilter"),extra:$("#extraFilter"),map:$("#candidateMap"),
+  mapMeta:$("#mapMeta"),toggleMap:$("#toggleMap"),compareDock:$("#compareDock"),
+  compareCount:$("#compareCount"),openCompare:$("#openCompare"),clearCompare:$("#clearCompare"),
+  compareModal:$("#compareModal"),compareWrap:$("#compareTableWrap")
 };
 
 let payload={listings:[],sourceStatus:{}};
@@ -25,6 +31,13 @@ let familySaved=new Set();
 let familyCode=localStorage.getItem("familyCode")||"";
 let realtimeChannel=null;
 let visibleLimit=PAGE_SIZE;
+let candidateMap=null;
+let markerLayer=null;
+let mapHidden=localStorage.getItem("mapHidden")==="1";
+let compareSelected=new Set(JSON.parse(localStorage.getItem("compareHomes")||"[]"));
+const previousVisitAt=localStorage.getItem("lastVisitAt");
+const visitStartedAt=new Date().toISOString();
+localStorage.setItem("lastVisitAt",visitStartedAt);
 
 const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
 const fmt=v=>v?new Intl.DateTimeFormat("es-ES",{dateStyle:"short",timeStyle:"short"}).format(new Date(v)):"—";
@@ -53,6 +66,9 @@ const published48=h=>publishedAge(h)<=48;
 const detectedRecent=h=>!h.publishedAt&&detectedAge(h)<=48;
 const isRecent=h=>publishedRecent(h)||detectedRecent(h);
 const stretch=h=>h.price>TARGET_PRICE&&h.price<=HARD_MAX_PRICE;
+const newSinceVisit=h=>!!previousVisitAt&&new Date(h.firstSeen||0).getTime()>new Date(previousVisitAt).getTime();
+const hasCoords=h=>Number.isFinite(Number(h.latitude))&&Number.isFinite(Number(h.longitude));
+const servicesKnown=h=>(h.nearbyServices||[]).length>0||["likely","confirmed"].includes(h.servicesStatus);
 
 function cleanPlace(value){
   let s=String(value||"").replace(/\bCentro Urbano\b/ig,"").replace(/\bCasco Urbano\b/ig,"").replace(/\s+/g," ").trim();
