@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MID_PRICE} from "./search-criteria.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE,MID_PRICE,MIN_BEDROOMS} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
@@ -60,7 +60,7 @@ const candidate=h=>
   Number.isFinite(Number(h.price)) &&
   Number(h.price)>0 &&
   Number(h.price)<=HARD_MAX_PRICE &&
-  Number(h.bedrooms)>=3 &&
+  Number(h.bedrooms)>=MIN_BEDROOMS &&
   h.occupancyStatus!=="blocked" &&
   h.financingStatus!=="blocked" &&
   h.safetyDecision!=="REJECT";
@@ -189,7 +189,7 @@ function card(h){
 function filteredList(){
   let a=dedupeListings((payload.listings||[]).filter(candidate));
   const q=els.search.value.toLowerCase().trim(),p=els.province.value,b=els.budget.value,s=els.status.value;
-  const minBeds=Number(els.bedrooms?.value||3),maxDrive=Number(els.drive?.value||0);
+  const minBeds=Number(els.bedrooms?.value||MIN_BEDROOMS),maxDrive=Number(els.drive?.value||0);
   const confidence=els.confidence?.value||"",extra=els.extra?.value||"";
 
   if(q)a=a.filter(h=>(h.title+" "+(cleanPlace(h.place)||"")).toLowerCase().includes(q));
@@ -491,7 +491,7 @@ async function load(silent=false){
         .select("*, listing_sources(provider,url,image_url,published_at,active), nearby_services(category,name,distance_m,latitude,longitude,checked_at)")
         .in("status",["candidate","verified"])
         .lte("price",HARD_MAX_PRICE)
-        .gte("bedrooms",3)
+        .gte("bedrooms",MIN_BEDROOMS)
         .order("published_at",{ascending:false,nullsFirst:false}),
       db.from("source_health").select("*").order("provider")
     ]);
