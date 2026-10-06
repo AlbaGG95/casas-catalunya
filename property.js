@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";\nimport {MAX_PRICE as HARD_MAX_PRICE,PREFERRED_PRICE as TARGET_PRICE} from "./search-criteria.js";
 
 const SUPABASE_URL="https://ethtlpnvqyxkoeudtcsj.supabase.co";
 const SUPABASE_KEY="sb_publishable_RAi269FvaP67ITZDNLi_bg_O-56BiRu";
@@ -228,7 +228,7 @@ async function saveFamilyProgress(){
   const offerRaw=$("#familyOfferAmount").value.trim();
   const offer=offerRaw?Number(offerRaw):null;
   if(offer!=null&&(!Number.isInteger(offer)||offer<1||offer>HARD_MAX_PRICE)){
-    toast("La oferta debe estar entre 1 € y 185.000 €.");
+    toast("La oferta debe estar entre 1 € y "+euro(HARD_MAX_PRICE)+".");
     return;
   }
   const visitRaw=$("#familyVisitAt").value;
@@ -297,7 +297,7 @@ function buildScoreBreakdown(p){
   if(stored?.length)return stored;
 
   const parts=[{label:"Base de encaje",points:28}];
-  parts.push({label:p.price<=TARGET_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–185k",points:p.price<=TARGET_PRICE?12:4});
+  parts.push({label:p.price<=TARGET_PRICE?"Precio ≤180.000 €":"Precio dentro del margen 180–190k",points:p.price<=TARGET_PRICE?12:4});
   parts.push({label:p.bedrooms>=4?"4+ habitaciones":"3 habitaciones",points:p.bedrooms>=4?7:4});
   parts.push({
     label:p.independent_status==="confirmed"?"Independiente confirmada":p.independent_status==="probable"?"Probablemente independiente":"Independencia pendiente",
@@ -464,7 +464,7 @@ function renderChecklist(p){
   const withinBudget=Number(p.price)<=HARD_MAX_PRICE;
   const underTarget=Number(p.price)<=TARGET_PRICE;
   const rows=[
-    stateRow("Presupuesto",underTarget?"Dentro del objetivo ≤180.000 €":"Dentro del margen máximo ≤185.000 €",withinBudget?"ok":"warn"),
+    stateRow("Presupuesto",underTarget?"Dentro del objetivo ≤180.000 €":"Dentro del margen máximo ≤190.000 €",withinBudget?"ok":"warn"),
     stateRow("Habitaciones",p.bedrooms+" habitaciones",p.bedrooms>=3?"ok":"warn"),
     stateRow("Jardín/parcela",statusText(p.garden_status),p.garden_status==="confirmed"?"ok":"pending"),
     stateRow("Independencia",statusText(p.independent_status),p.independent_status==="confirmed"?"ok":"pending"),
@@ -548,7 +548,7 @@ function render(p){
   const tags=[];
   tags.push(p.status==="verified"?tag("Documentación verificada","verified"):tag("Candidata","candidate"));
   tags.push(tag("Precio "+confidenceText(p.price_confidence),p.price_confidence==="high"?"verified":p.price_confidence==="medium"?"candidate":"pending"));
-  if(p.price>TARGET_PRICE)tags.push(tag("Margen 180–185k","stretch"));
+  if(p.price>TARGET_PRICE)tags.push(tag("Margen 180–190k","stretch"));
   if(p.registry_status!=="verified_clear")tags.push(tag("Nota simple pendiente","pending"));
   $("#detailTags").innerHTML=tags.join("");
 
