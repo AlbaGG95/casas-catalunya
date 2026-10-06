@@ -55,6 +55,9 @@ const discovery=fs.readFileSync("supabase/functions/discovery-plan/index.ts","ut
 const updater=fs.readFileSync("scripts/update-listings.mjs","utf8");
 const app=fs.readFileSync("app.js","utf8");
 const property=fs.readFileSync("property.js","utf8");
+const nodeEngine=fs.readFileSync("scripts/lib/safety-engine.mjs","utf8");
+const ingestEngine=fs.readFileSync("supabase/functions/ingest-listings/safety-engine.ts","utf8");
+const reclassEngine=fs.readFileSync("supabase/functions/reclassify-safety/safety-engine.ts","utf8");
 
 assert.match(migration,/evidence_source text/);
 assert.match(migration,/evidence_match text/);
@@ -83,5 +86,7 @@ assert.match(updater,/safetyEvidence:parsed\.safety\?\.evidenceDetail/);
 
 assert.doesNotMatch(app,/evidence_excerpt|evidence_match|listing_security_text/);
 assert.doesNotMatch(property,/evidence_excerpt|evidence_match|listing_security_text/);
+assert.equal(ingestEngine,nodeEngine,"ingest SafetyEngine drift");
+assert.equal(reclassEngine,nodeEngine,"reclassify SafetyEngine drift");
 
 console.log("Structured safety decision evidence: OK");
