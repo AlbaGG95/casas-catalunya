@@ -7,6 +7,7 @@ import {evaluateSafetyText,SAFETY_DECISIONS} from "./lib/safety-engine.mjs";
 import {extractExplicitCadastralRef,extractStructuredIdentity,identityPrecision} from "./lib/official-identity.mjs";
 import {isDetailUrl,embeddedDetailPatterns} from "./lib/provider-adapters.mjs";
 import {buildSourceDefinitions,sourceDefinitionKey} from "./lib/source-catalog.mjs";
+import {allJsonLd,extractListingSecurityText,relevantText,stripPrivateListingFields} from "./lib/listing-security-text.mjs";
 
 const DATA_PATH=new URL("../data/listings.json",import.meta.url);
 const GEO_PATH=new URL("../data/geocache.json",import.meta.url);
@@ -130,40 +131,6 @@ function discover(src,base,html){
   }
   return [...found.values()].slice(0,140);
 }
-function allJsonLd($){
-  const items=[];
-  $('script[type="application/ld+json"]').each((_,s)=>{
-    try{
-      const v=JSON.parse($(s).text());
-      const walk=x=>{
-        if(!x)return;
-        if(Array.isArray(x))return x.forEach(walk);
-        if(typeof x==="object"){items.push(x);Object.values(x).forEach(walk)}
-      };
-      walk(v);
-    }catch{}
-  });
-  return items;
-}
-function relevantText($,items){
-  const chunks=[];
-  const title=clean($("h1").first().text()||$("title").text());
-  const meta=clean($('meta[name="description"]').attr("content"));
-  if(title)chunks.push(title);
-  if(meta)chunks.push(meta);
-  for(const x of items){
-    for(const v of [x?.description,x?.headline,x?.name]){
-      if(typeof v==="string"&&v.length>20)chunks.push(clean(v));
-    }
-  }
-  // Clone the central content and remove navigation, related-listing carousels and footers.
-  const root=$("main").first().length?$("main").first().clone():$("body").clone();
-  root.find("nav,footer,header,aside,script,style,noscript,[class*='related' i],[class*='similar' i],[class*='recommend' i],[class*='carousel' i],[class*='suggest' i]").remove();
-  const mainText=clean(root.text());
-  if(mainText)chunks.push(mainText.slice(0,22000));
-  return clean(chunks.join(" "));
-}
-
 function extractBedrooms(text,items){
   for(const x of items){
     for(const v of [x.numberOfRooms,x.numberOfBedrooms,x.numberOfBedroomsTotal,x.bedrooms]){
@@ -445,7 +412,8 @@ async function enrichTravel(listing,cache){
 function parseDetail(src,url,html,now){
   const $=cheerio.load(html);
   const items=allJsonLd($);
-  const text=relevantText($,items);
+  const securityText=extractListingSecurityText($,items);
+  const text=securityText.safetyText;
   const safety=evaluateSafetyText(text);
   if(safety.decision===SAFETY_DECISIONS.REJECT)return {reject:"safety:"+safety.code,safety};
   if(!POSITIVE.house.test(text))return {reject:"no parece casa/chalet"};
@@ -494,6 +462,7 @@ function parseDetail(src,url,html,now){
     locationPrecision,
     hasGarage:POSITIVE.garage.test(text),hasPool:POSITIVE.pool.test(text),
     stretchBudget:price>PREFERRED_PRICE,score:0,
+    securityText:{...securityText,capturedAt:now},
     evidence:{
       price:{evidence:priceInfo.evidence,confidence:priceInfo.confidence,value:price},
       bedrooms:{confidence:items.some(x=>x?.numberOfRooms||x?.numberOfBedrooms||x?.numberOfBedroomsTotal||x?.bedrooms)?"high":"medium",value:bedrooms},
@@ -814,7 +783,7 @@ async function main(){
       rejectionTotals
     },
     sourceStatus,
-    listings
+    listings:listings.map(stripPrivateListingFields)
   };
   await fs.mkdir(new URL("../data/",import.meta.url),{recursive:true});
   await fs.writeFile(OUTPUT_PATH,JSON.stringify(out,null,2)+"\n");
