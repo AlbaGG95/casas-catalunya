@@ -272,35 +272,78 @@ function parseEuro(raw){
   const n=Number(String(raw).replace(/[^0-9]/g,""));
   return Number.isFinite(n)&&n>=10000&&n<=5000000?n:null;
 }
+function structuredPrices(items){
+  const out=[];
+  for(const x of items){
+    for(const p of [x?.offers?.price,x?.price,x?.offers?.lowPrice]){
+      const n=firstNumber(p);
+      if(n&&n>=10000&&n<=5000000)out.push(Math.round(n));
+    }
+  }
+  return [...new Set(out)];
+}
+function labeledPropertyPrice(text){
+  const patterns=[
+    /precio\s+del\s+inmueble\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i,
+    /precio\s+de\s+venta\s*:?\s*(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i
+  ];
+  for(const rx of patterns){
+    const m=text.match(rx);
+    const n=parseEuro(m?.[1]);
+    if(n)return n;
+  }
+  return null;
+}
 function extractProminentPrice($){
   const candidates=[];
   const selectors=[
+    'h1',
     '[data-testid*="price" i]','[class*="price" i]','[class*="precio" i]',
     'main','article'
   ];
   for(const sel of selectors){
     const node=$(sel).first();
     if(!node.length)continue;
-    const txt=clean(node.text()).slice(0,5000);
+    const txt=clean((sel==="h1"?node.parent().text():node.text())).slice(0,3500);
     for(const m of txt.matchAll(/(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/g)){
       const n=parseEuro(m[1]);
       if(n)candidates.push(n);
-      if(candidates.length>=5)break;
+      if(candidates.length>=8)break;
     }
     if(candidates.length)break;
   }
   return candidates[0]||null;
 }
-function extractPrice(text,items,$){
-  const prominent=extractProminentPrice($);
-  if(prominent)return prominent;
-  for(const x of items){
-    for(const p of [x?.offers?.price,x?.price,x?.offers?.lowPrice]){
-      const n=firstNumber(p);if(n&&n>=10000&&n<=5000000)return Math.round(n);
+function extractPrice(text,items,$,provider){
+  const labeled=labeledPropertyPrice(text);
+  const structured=structuredPrices(items);
+
+  // Fotocasa embeds mortgage/tax figures such as "Impuestos y gastos",
+  // "Ahorro aportado" and "Importe de la hipoteca" on the same page.
+  // Never infer the sale price from a generic price-like element there.
+  if(provider==="Fotocasa"){
+    if(labeled){
+      const disagree=structured.find(n=>Math.abs(n-labeled)/Math.max(n,labeled)>.08);
+      return {price:labeled,conflict:!!disagree,evidence:"fotocasa_labeled_property_price"};
     }
+    if(structured.length===1)return {price:structured[0],conflict:false,evidence:"structured"};
+    if(structured.length>1){
+      const min=Math.min(...structured),max=Math.max(...structured);
+      if(max/min>1.08)return {price:null,conflict:true,evidence:"structured_conflict"};
+      return {price:Math.round(structured.reduce((a,b)=>a+b,0)/structured.length),conflict:false,evidence:"structured_consensus"};
+    }
+    return {price:null,conflict:true,evidence:"fotocasa_unverified_price"};
   }
+
+  if(labeled)return {price:labeled,conflict:false,evidence:"labeled"};
+  if(structured.length)return {price:structured[0],conflict:false,evidence:"structured"};
+
+  const prominent=extractProminentPrice($);
+  if(prominent)return {price:prominent,conflict:false,evidence:"prominent"};
+
   const m=text.match(/(?:precio[^0-9]{0,20})?(\d{2,3}(?:[.\s]\d{3})+|\d{5,7})\s*€/i);
-  return m?parseEuro(m[1]):null;
+  const fallback=parseEuro(m?.[1]);
+  return {price:fallback,conflict:false,evidence:fallback?"generic":"none"};
 }
 function extractBedrooms(text,items){
   for(const x of items){
@@ -571,7 +614,8 @@ function parseDetail(src,url,html,now){
   const title=clean($("h1").first().text()||$('meta[property="og:title"]').attr("content")||$("title").text()).slice(0,180);
   if(/(?:casa|finca|mas[ií]a)\s+r[uú]stica/i.test(title))return {reject:"rústica"};
   const meta=clean($('meta[name="description"]').attr("content"));
-  const price=extractPrice(text,items,$),bedrooms=extractBedrooms(text,items);
+  const priceInfo=extractPrice(text,items,$,src.provider),price=priceInfo.price,bedrooms=extractBedrooms(text,items);
+  if(priceInfo.conflict)return {reject:"precio conflictivo/no verificado"};
   if(!price||price>MAX_PRICE)return {reject:"precio"};
   if(!bedrooms||bedrooms<MIN_BEDROOMS||bedrooms>12)return {reject:"habitaciones"};
 
@@ -584,7 +628,7 @@ function parseDetail(src,url,html,now){
 
   const listing={
     id:idFor(src.provider,url),provider:src.provider,title:title||"Casa detectada",place,province,
-    price,bedrooms,houseM2,plotM2,url,imageUrl:extractImage(items,$),
+    price,bedrooms,houseM2,plotM2,url,imageUrl:extractImage(items,$),priceEvidence:priceInfo.evidence,
     summary:(meta||summarize(title,place,price,bedrooms,plotM2)).slice(0,420),
     firstSeen:null,lastSeen:now,lastChecked:now,active:true,
     publishedAt:date.publishedAt,freshnessEvidence:date.evidence,freshnessStatus:fresh,discoveredVia:src.kind,
