@@ -141,7 +141,7 @@ function card(h){
       check(h.registryStatus==="verified_clear"?"Cargas verificadas":h.registryStatus==="claimed_clear"?"Anuncio afirma libre de cargas":"Nota simple pendiente",h.registryStatus==="verified_clear"?"ok":"pending")+
     '</div>'+
     '<div class="meta"><span>'+esc(timing)+'</span><span>Revisada '+fmt(h.lastSeen||h.lastChecked)+'</span><span>'+sourceCount+' fuente'+(sourceCount>1?"s":"")+'</span></div>'+
-    '<div class="actions"><button class="'+(sv?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(sv?"★ Guardada":"☆ Guardar")+'</button>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Ver anuncio</a>':"")+'</div>'+
+    '<div class="actions"><button class="'+(sv?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(sv?"★ Guardada":"☆ Guardar")+'</button><a class="detail-link" href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver ficha</a>'+(link?'<a href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">Anuncio ↗</a>':"")+'</div>'+
     '</div></article>';
 }
 
@@ -260,6 +260,9 @@ function transformProperty(row){
     hasGarage:row.has_garage,
     hasPool:row.has_pool,
     score:Number(row.score)||0,
+    priceConfidence:row.price_confidence,
+    dataConfidence:row.data_confidence,
+    confidenceScore:Number(row.confidence_score)||0,
   };
 }
 
