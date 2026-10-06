@@ -579,7 +579,6 @@ function render(p){
   renderVerification(p);
   loadSavedState(p);
   updateFamilyConnectionUI();
-  loadFamilyWorkspace({quiet:true});
 
   detail.hidden=false;
   errorBox.hidden=true;
@@ -630,6 +629,17 @@ async function load(){
   }
 
   render(data);
+  if(familyCode){
+    const ok=await loadFamilyWorkspace({quiet:true});
+    if(!ok){
+      familyCode="";
+      familyWorkspaceData=null;
+      familySaved=false;
+      localStorage.removeItem("familyCode");
+      updateFamilyConnectionUI();
+      await loadSavedState(data);
+    }
+  }
 }
 
 $("#detailSave").addEventListener("click",toggleSaved);
