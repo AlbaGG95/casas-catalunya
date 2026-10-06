@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
-import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";\nimport { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
+import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO="AlbaGG95/casas-catalunya";
 const ALLOWED_REF="refs/heads/main";
