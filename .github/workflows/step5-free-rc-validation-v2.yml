@@ -1,0 +1,200 @@
+name: Step 5 free RC validation
+
+on:
+  push:
+    branches:
+      - step5-free-rc-validation-v2
+
+permissions:
+  contents: read
+
+jobs:
+  migration-validation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: rc_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create isolated Supabase-like fixture
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists pgcrypto;
+
+          do $$
+          begin
+            if not exists (select 1 from pg_roles where rolname='anon') then
+              create role anon nologin;
+            end if;
+            if not exists (select 1 from pg_roles where rolname='authenticated') then
+              create role authenticated nologin;
+            end if;
+            if not exists (select 1 from pg_roles where rolname='service_role') then
+              create role service_role nologin bypassrls;
+            end if;
+          end
+          $$;
+
+          create table public.properties (
+            id uuid primary key default gen_random_uuid(),
+            evidence jsonb
+          );
+
+          create table public.listing_sources (
+            id uuid primary key default gen_random_uuid(),
+            property_id uuid references public.properties(id) on delete cascade,
+            evidence jsonb
+          );
+
+          insert into public.properties(evidence)
+          values ('{"keep":"ok","safety":{"code":"occupied","evidence":"private phrase","evidenceDetail":{"source":"body"}},"condition":{"evidence":"private condition","evidenceDetail":{"source":"body"}}}');
+
+          insert into public.listing_sources(property_id,evidence)
+          select id,'{"keep":"ok","safety":{"evidence":"private phrase","evidenceDetail":{"source":"body"}},"condition":{"evidence":"private condition","evidenceDetail":{"source":"body"}}}'
+          from public.properties limit 1;
+          SQL
+
+      - name: Apply migration once
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261006134500_step3_listing_security_text.sql
+
+      - name: Apply migration twice for idempotence
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261006134500_step3_listing_security_text.sql
+
+      - name: Verify security, constraints and scrub
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            p_id uuid;
+            s_id uuid;
+            rls_enabled boolean;
+            leaked_privileges integer;
+            service_privileges integer;
+            properties_scrubbed boolean;
+            sources_scrubbed boolean;
+          begin
+            select relrowsecurity into rls_enabled
+            from pg_class c
+            join pg_namespace n on n.oid=c.relnamespace
+            where n.nspname='public' and c.relname='listing_security_text';
+
+            if rls_enabled is distinct from true then
+              raise exception 'RLS is not enabled';
+            end if;
+
+            select count(*) into leaked_privileges
+            from information_schema.role_table_grants
+            where table_schema='public'
+              and table_name='listing_security_text'
+              and grantee in ('anon','authenticated');
+
+            if leaked_privileges <> 0 then
+              raise exception 'anon/authenticated privileges leaked: %', leaked_privileges;
+            end if;
+
+            select count(distinct privilege_type) into service_privileges
+            from information_schema.role_table_grants
+            where table_schema='public'
+              and table_name='listing_security_text'
+              and grantee='service_role'
+              and privilege_type in ('SELECT','INSERT','UPDATE','DELETE');
+
+            if service_privileges <> 4 then
+              raise exception 'service_role privileges incomplete: %', service_privileges;
+            end if;
+
+            select (
+              evidence #> '{safety,evidence}' is null
+              and evidence #> '{safety,evidenceDetail}' is null
+              and evidence #> '{condition,evidence}' is null
+              and evidence #> '{condition,evidenceDetail}' is null
+              and evidence->>'keep'='ok'
+            ) into properties_scrubbed
+            from public.properties limit 1;
+
+            if properties_scrubbed is distinct from true then
+              raise exception 'properties evidence scrub failed';
+            end if;
+
+            select (
+              evidence #> '{safety,evidence}' is null
+              and evidence #> '{safety,evidenceDetail}' is null
+              and evidence #> '{condition,evidence}' is null
+              and evidence #> '{condition,evidenceDetail}' is null
+              and evidence->>'keep'='ok'
+            ) into sources_scrubbed
+            from public.listing_sources limit 1;
+
+            if sources_scrubbed is distinct from true then
+              raise exception 'listing_sources evidence scrub failed';
+            end if;
+
+            select id into p_id from public.properties limit 1;
+            select id into s_id from public.listing_sources limit 1;
+
+            insert into public.listing_security_text(
+              property_id,listing_source_id,canonical_url,provider,
+              safety_text,content_hash,safety_decision,safety_code,safety_reason,
+              evidence_source,evidence_match,evidence_excerpt,captured_at
+            ) values (
+              p_id,s_id,'https://example.test/ok','fixture',
+              'Casa actualmente ocupada',
+              repeat('a',64),'REJECT','occupied','ocupada',
+              'body','ocupada','Vivienda actualmente ocupada y no visitable',now()
+            );
+
+            begin
+              insert into public.listing_security_text(
+                property_id,canonical_url,provider,safety_text,content_hash,
+                safety_decision,captured_at
+              ) values (
+                p_id,'https://example.test/bad-decision','fixture','x',
+                repeat('b',64),'INVALID',now()
+              );
+              raise exception 'invalid decision constraint did not fire';
+            exception when check_violation then
+              null;
+            end;
+
+            begin
+              insert into public.listing_security_text(
+                property_id,canonical_url,provider,safety_text,content_hash,
+                evidence_excerpt,captured_at
+              ) values (
+                p_id,'https://example.test/bad-excerpt','fixture','x',
+                repeat('c',64),repeat('x',261),now()
+              );
+              raise exception 'excerpt length constraint did not fire';
+            exception when check_violation then
+              null;
+            end;
+          end
+          $$;
+          SQL
+
+      - name: Validate application contracts
+        run: |
+          npm install --no-audit --no-fund
+          npm test
