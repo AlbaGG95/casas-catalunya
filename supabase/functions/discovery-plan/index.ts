@@ -34,6 +34,18 @@ function chunks<T>(items:T[],size=80){
   return out;
 }
 
+function rejectionAuditText(x:any,outcome:string){
+  const base=String(x?.reason||(outcome==="error"?"detail_error":"rejected")).trim();
+  const detail=x?.safetyEvidence;
+  if(!detail||typeof detail!=="object")return base.slice(0,500);
+  const source=String(detail.source||"").trim();
+  const match=String(detail.match||"").trim();
+  const excerpt=String(detail.excerpt||"").replace(/\s+/g," ").trim();
+  const evidence=[source&&`source=${source}`,match&&`match=${match}`,excerpt&&`excerpt=${excerpt}`]
+    .filter(Boolean).join(" | ");
+  return (evidence?`${base} | ${evidence}`:base).slice(0,500);
+}
+
 async function selectByUrls(supabase:any,table:string,columns:string,urls:string[],extra?:(q:any)=>any){
   const all:any[]=[];
   for(const part of chunks(urls)){
@@ -79,7 +91,7 @@ Deno.serve(async(req)=>{
           last_fetched_at:now,
           fetch_count:Number(old.fetch_count||0)+1,
           state:outcome,
-          last_error:outcome==="accepted"?null:String(x?.reason||(outcome==="error"?"detail_error":"rejected")).slice(0,500)
+          last_error:outcome==="accepted"?null:rejectionAuditText(x,outcome)
         };
       }).filter((x:any)=>x.canonical_url);
 
