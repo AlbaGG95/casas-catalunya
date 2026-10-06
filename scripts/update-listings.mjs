@@ -63,7 +63,7 @@ async function fetchHtml(url){
   const timer=setTimeout(()=>ctrl.abort(),18000);
   try{
     const r=await fetch(url,{headers:{"user-agent":UA,"accept-language":"es-ES,es;q=.9,en;q=.5"},redirect:"follow",signal:ctrl.signal});
-    if(!r.ok)throw new Error("HTTP "+r.status);
+    if(!r.ok){const error=new Error("HTTP "+r.status);error.status=r.status;throw error;}
     const ct=r.headers.get("content-type")||"";
     if(!ct.includes("text/html"))throw new Error("not html");
     return await r.text();
