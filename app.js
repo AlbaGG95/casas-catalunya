@@ -212,6 +212,7 @@ function filteredList(){
   if(s==="family-negotiating")a=a.filter(h=>familyInfo(h)?.stage==="negotiating");
   if(s==="family-offer")a=a.filter(h=>familyInfo(h)?.stage==="offer");
   if(s==="family-discarded")a=a.filter(h=>familyInfo(h)?.stage==="discarded");
+  else if(familyCode)a=a.filter(h=>familyInfo(h)?.stage!=="discarded");
 
   const so=els.sort.value;
   const date=h=>new Date(h.publishedAt||h.firstSeen||0).getTime();
@@ -290,6 +291,12 @@ function comparisonValue(h,key){
   if(key==="condition")return h.conditionStatus==="confirmed"?"Para entrar indicado":"Pendiente";
   if(key==="services")return servicesKnown(h)?"Detectados":"Pendiente";
   if(key==="confidence")return h.confidenceScore+"/100";
+  if(key==="family"){
+    const f=familyInfo(h);
+    if(!f)return "Sin seguimiento";
+    const rating=Number(f.average_rating)>0?" · "+Number(f.average_rating).toFixed(1)+"/5":"";
+    return familyStageLabel(f.stage)+rating;
+  }
   if(key==="score")return h.score+"/100";
   return "—";
 }
@@ -299,7 +306,7 @@ function openCompare(){
   const rows=[
     ["Precio","price"],["Habitaciones","bedrooms"],["Vivienda","houseM2"],["Parcela","plotM2"],
     ["Trayecto","driveMinutes"],["Independencia","independent"],["Estado","condition"],
-    ["Servicios","services"],["Confianza de datos","confidence"],["Encaje","score"]
+    ["Servicios","services"],["Familia","family"],["Confianza de datos","confidence"],["Encaje","score"]
   ];
   const head='<tr><th>Dato</th>'+homes.map(h=>'<th><a href="/property.html?id='+encodeURIComponent(h.dbId)+'">'+esc(cleanPlace(h.place)||h.title)+'</a><small>'+esc(euro(h.price))+'</small></th>').join("")+'</tr>';
   const body=rows.map(([label,key])=>'<tr><th>'+esc(label)+'</th>'+homes.map(h=>'<td>'+esc(comparisonValue(h,key))+'</td>').join("")+'</tr>').join("");
