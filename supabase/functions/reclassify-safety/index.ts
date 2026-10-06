@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
-import { evaluateSafetyText, SAFETY_DECISIONS } from "./safety-engine.ts";
+import { evaluateSafetyText, evaluateSafetyDocument, SAFETY_DECISIONS } from "./safety-engine.ts";
 import { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const ALLOWED_REPO="AlbaGG95/casas-catalunya";
@@ -42,17 +42,17 @@ Deno.serve(async(req)=>{
     if(error)throw error;
 
     const ids=(rows||[]).map((p:any)=>p.id);
-    const securityByProperty=new Map<string,string>();
+    const securityByProperty=new Map<string,any>();
     if(ids.length){
       const {data:securityRows,error:securityError}=await supabase
         .from("listing_security_text")
-        .select("property_id,safety_text,captured_at")
+        .select("id,property_id,title_text,meta_description,structured_text,body_text,safety_text,captured_at")
         .in("property_id",ids)
         .order("captured_at",{ascending:false});
       if(securityError)throw securityError;
       for(const row of securityRows||[]){
         if(!securityByProperty.has(row.property_id)&&row.safety_text){
-          securityByProperty.set(row.property_id,row.safety_text);
+          securityByProperty.set(row.property_id,row);
         }
       }
     }
@@ -61,8 +61,18 @@ Deno.serve(async(req)=>{
     const details:any[]=[];
 
     for(const p of rows||[]){
-      const privateText=securityByProperty.get(p.id);\n      const text=privateText||`${p.title||""} ${p.summary||""}`;\n      if(privateText)fullTextUsed++;
-      const result=evaluateSafetyText(text);
+      const privateDoc=securityByProperty.get(p.id);
+      const text=privateDoc?.safety_text||`${p.title||""} ${p.summary||""}`;
+      const result=privateDoc
+        ? evaluateSafetyDocument({
+            title:privateDoc.title_text,
+            metaDescription:privateDoc.meta_description,
+            structuredText:privateDoc.structured_text,
+            bodyText:privateDoc.body_text,
+            safetyText:privateDoc.safety_text
+          })
+        : evaluateSafetyText(text);
+      if(privateDoc)fullTextUsed++;
       const now=new Date().toISOString();
 
       if(result.decision===SAFETY_DECISIONS.REJECT){
@@ -118,11 +128,28 @@ Deno.serve(async(req)=>{
         else review++;
       }
 
+      if(privateDoc){
+        const detail=result.evidenceDetail||{};
+        const {error:evidenceError}=await supabase.from("listing_security_text")
+          .update({
+            safety_decision:result.decision,
+            safety_code:result.code,
+            safety_reason:result.reason,
+            evidence_source:detail.source||null,
+            evidence_match:detail.match?String(detail.match).slice(0,300):null,
+            evidence_excerpt:detail.excerpt?String(detail.excerpt).slice(0,260):null,
+            updated_at:now
+          })
+          .eq("id",privateDoc.id);
+        if(evidenceError)throw evidenceError;
+      }
+
       details.push({
         id:p.id,
         from:p.safety_decision||null,
         to:result.decision,
-        code:result.code
+        code:result.code,
+        evidenceSource:result.evidenceDetail?.source||null
       });
     }
 
