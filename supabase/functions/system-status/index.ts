@@ -1,4 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";\nimport { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { MAX_PRICE, MIN_BEDROOMS } from "../_shared/search-criteria.ts";
 
 const cors={
   "Access-Control-Allow-Origin":"*",
