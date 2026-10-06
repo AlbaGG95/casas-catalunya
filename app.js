@@ -37,7 +37,7 @@ let candidateMap=null;
 let markerLayer=null;
 let mapHidden=localStorage.getItem("mapHidden")!=="0";
 let compareSelected=new Set(JSON.parse(localStorage.getItem("compareHomes")||"[]"));
-let safetyView=localStorage.getItem("safetyView")||"all";
+let safetyView=localStorage.getItem("safetyView")||"all";\nlet compareReturnFocus=null;
 if(!["all","compatible","review"].includes(safetyView))safetyView="all";
 const previousVisitAt=localStorage.getItem("lastVisitAt");
 const visitStartedAt=new Date().toISOString();
@@ -151,13 +151,13 @@ function card(h){
     : "Detectado "+fmt(h.firstSeen);
 
   const badges=[];
-  badges.push('<span class="home-state '+(compatible?"ready":"review")+'">'+(compatible?"✓ Compatible":"Por verificar")+'</span>');
+  badges.push('<span class="home-state '+(compatible?"ready":"review")+'">'+(compatible?"✓ Recomendada":"Falta confirmar")+'</span>');
   const fresh=freshnessBadge(h);if(fresh)badges.push(fresh);
   if(stretch(h))badges.push('<span class="home-state stretch">Margen 180–190k</span>');
   if(family?.stage&&family.stage!=="new")badges.push('<span class="home-state family">'+esc(familyStageLabel(family.stage))+'</span>');
 
   const media=img
-    ? '<div class="card-media"><img loading="lazy" referrerpolicy="no-referrer" src="'+esc(img)+'" alt=""><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>'
+    ? '<div class="card-media"><img loading="lazy" referrerpolicy="no-referrer" src="'+esc(img)+'" alt="Foto del anuncio de '+esc(h.title||"la vivienda")+'"><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>'
     : '<div class="card-media"><div class="photo-fallback">Sin foto importada</div><span class="media-badge">'+esc(h.provider||"Fuente")+'</span></div>';
 
   const facts=[
@@ -178,7 +178,7 @@ function card(h){
       '<div class="home-card-actions">'+
         '<button class="save-button '+(saved?"saved":"")+'" data-save="'+esc(h.id)+'" data-db="'+esc(h.dbId)+'">'+(saved?"★ Guardada":"☆ Guardar")+'</button>'+
         '<button class="compare-chip '+(compareSelected.has(h.dbId)?"selected":"")+'" data-compare="'+esc(h.dbId)+'">'+(compareSelected.has(h.dbId)?"✓ Comparar":"+ Comparar")+'</button>'+
-        '<a class="detail-link" href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver ficha</a>'+
+        '<a class="detail-link" href="/property.html?id='+encodeURIComponent(h.dbId)+'">Ver vivienda</a>'+
         (link?'<a class="source-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir anuncio original">↗</a>':"")+
       '</div>'+
     '</div>'+
@@ -318,17 +318,22 @@ function openCompare(){
   const rows=[
     ["Precio","price"],["Habitaciones","bedrooms"],["Vivienda","houseM2"],["Parcela","plotM2"],
     ["Trayecto","driveMinutes"],["Independencia","independent"],["Estado","condition"],
-    ["Servicios","services"],["Familia","family"],["Confianza de datos","confidence"],["Encaje","score"]
+    ["Servicios","services"],["Familia","family"],["Información disponible","confidence"],["Coincide con tu búsqueda","score"]
   ];
   const head='<tr><th>Dato</th>'+homes.map(h=>'<th><a href="/property.html?id='+encodeURIComponent(h.dbId)+'">'+esc(cleanPlace(h.place)||h.title)+'</a><small>'+esc(euro(h.price))+'</small></th>').join("")+'</tr>';
   const body=rows.map(([label,key])=>'<tr><th>'+esc(label)+'</th>'+homes.map(h=>'<td>'+esc(comparisonValue(h,key))+'</td>').join("")+'</tr>').join("");
   els.compareWrap.innerHTML='<table class="compare-table"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+  compareReturnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
   els.compareModal.hidden=false;
   document.body.classList.add("modal-open");
+  const closeButton=els.compareModal.querySelector("[data-close-compare]");
+  requestAnimationFrame(()=>closeButton?.focus());
 }
 function closeCompare(){
   els.compareModal.hidden=true;
   document.body.classList.remove("modal-open");
+  compareReturnFocus?.focus?.();
+  compareReturnFocus=null;
 }
 
 function updateAlertButton(){
@@ -387,7 +392,11 @@ function render(){
   if(els.allSafetyCount)els.allSafetyCount.textContent=bootstrapping?"—":all.length;
   if(els.compatibleCount)els.compatibleCount.textContent=bootstrapping?"—":compatibleAll.length;
   if(els.reviewCount)els.reviewCount.textContent=bootstrapping?"—":reviewAll.length;
-  document.querySelectorAll("[data-safety-view]").forEach(btn=>btn.classList.toggle("active",btn.dataset.safetyView===safetyView));
+  document.querySelectorAll("[data-safety-view]").forEach(btn=>{
+    const selected=btn.dataset.safetyView===safetyView;
+    btn.classList.toggle("active",selected);
+    btn.setAttribute("aria-pressed",selected?"true":"false");
+  });
 
   if(bootstrapping){
     els.empty.hidden=false;
@@ -626,12 +635,23 @@ els.alertBtn?.addEventListener("click",enableAlerts);
 els.toggleMap?.addEventListener("click",()=>{
   mapHidden=!mapHidden;
   localStorage.setItem("mapHidden",mapHidden?"1":"0");
+  els.toggleMap.setAttribute("aria-expanded",mapHidden?"false":"true");
   render();
 });
 els.clearCompare?.addEventListener("click",()=>{compareSelected.clear();persistCompare();render()});
 els.openCompare?.addEventListener("click",openCompare);
 document.querySelectorAll("[data-close-compare]").forEach(x=>x.addEventListener("click",closeCompare));
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!els.compareModal.hidden)closeCompare()});
+document.addEventListener("keydown",e=>{
+  if(els.compareModal.hidden)return;
+  if(e.key==="Escape"){closeCompare();return}
+  if(e.key!=="Tab")return;
+  const focusable=[...els.compareModal.querySelectorAll('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter(x=>!x.hasAttribute("hidden"));
+  if(!focusable.length)return;
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+});
 updateFamilyButton();
 updateAlertButton();
 updateCompareDock();
