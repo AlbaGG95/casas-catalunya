@@ -41,11 +41,27 @@ Deno.serve(async(req)=>{
 
     if(error)throw error;
 
-    let accepted=0,review=0,rejected=0;
+    const ids=(rows||[]).map((p:any)=>p.id);
+    const securityByProperty=new Map<string,string>();
+    if(ids.length){
+      const {data:securityRows,error:securityError}=await supabase
+        .from("listing_security_text")
+        .select("property_id,safety_text,captured_at")
+        .in("property_id",ids)
+        .order("captured_at",{ascending:false});
+      if(securityError)throw securityError;
+      for(const row of securityRows||[]){
+        if(!securityByProperty.has(row.property_id)&&row.safety_text){
+          securityByProperty.set(row.property_id,row.safety_text);
+        }
+      }
+    }
+
+    let accepted=0,review=0,rejected=0,fullTextUsed=0;
     const details:any[]=[];
 
     for(const p of rows||[]){
-      const text=`${p.title||""} ${p.summary||""}`;
+      const privateText=securityByProperty.get(p.id);\n      const text=privateText||`${p.title||""} ${p.summary||""}`;\n      if(privateText)fullTextUsed++;
       const result=evaluateSafetyText(text);
       const now=new Date().toISOString();
 
@@ -116,6 +132,7 @@ Deno.serve(async(req)=>{
       accepted,
       review,
       rejected,
+      fullTextUsed,
       details
     });
   }catch(e){
