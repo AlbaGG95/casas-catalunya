@@ -321,7 +321,7 @@ function renderScore(p){
   const parts=buildScoreBreakdown(p);
   const total=parts.reduce((s,x)=>s+(Number(x.points)||0),0);
   $("#scoreBreakdown").innerHTML=
-    '<div class="score-total"><span>Score actual</span><strong>'+esc(p.score)+'/100</strong><small>Desglose de '+parts.length+' factores</small></div>'+
+    '<div class="score-total"><span>Coincidencia con tu búsqueda</span><strong>'+esc(p.score)+'/100</strong><small>'+parts.length+' criterios revisados</small></div>'+
     '<div class="score-parts">'+parts.map(x=>
       '<div><span>'+esc(x.label)+'</span><strong>+'+esc(x.points)+'</strong></div>'
     ).join("")+'</div>'+
@@ -331,7 +331,7 @@ function renderScore(p){
 function renderEvidence(p){
   const evidence=p.evidence||{};
   const items=[
-    ["Precio",p.price_confidence,evidence.price?.evidence||"Sin detalle de evidencia",euro(p.price)],
+    ["Precio",p.price_confidence,evidence.price?.evidence||"Información pendiente",euro(p.price)],
     ["Habitaciones",evidence.bedrooms?.confidence||"unknown","Origen del dato",String(p.bedrooms)],
     ["Jardín/parcela",evidence.garden?.confidence||"unknown",evidence.garden?.matched?"Detectado en el anuncio":"Pendiente",""],
     ["Independencia",evidence.independent?.confidence||"unknown",statusText(p.independent_status),""],
@@ -552,7 +552,7 @@ function render(p){
   $("#detailTags").innerHTML=tags.join("");
 
   const image=safe(p.image_url)||(p.listing_sources||[]).map(x=>safe(x.image_url)).find(Boolean);
-  $("#detailMedia").innerHTML=image?'<img src="'+esc(image)+'" alt="" referrerpolicy="no-referrer">':'<div class="detail-photo-fallback">Foto disponible en el anuncio original</div>';
+  $("#detailMedia").innerHTML=image?'<img src="'+esc(image)+'" alt="Foto del anuncio de '+esc(p.title||"la vivienda")+'" referrerpolicy="no-referrer">':'<div class="detail-photo-fallback">Foto disponible en el anuncio original</div>';
 
   const source=(p.listing_sources||[]).find(x=>x.active!==false&&safe(x.url));
   if(source){
