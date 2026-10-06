@@ -32,10 +32,14 @@ for(const [name,value] of Object.entries({
 const ingest=fs.readFileSync("supabase/functions/ingest-listings/index.ts","utf8");
 const reclassify=fs.readFileSync("supabase/functions/reclassify-safety/index.ts","utf8");
 const status=fs.readFileSync("supabase/functions/system-status/index.ts","utf8");
-for(const [name,source] of [["ingest",ingest],["reclassify",reclassify],["system-status",status]]){
+const revalidation=fs.readFileSync("supabase/functions/revalidation-plan/index.ts","utf8");
+for(const [name,source] of [["ingest",ingest],["reclassify",reclassify],["system-status",status],["revalidation-plan",revalidation]]){
   assert.match(source,/_shared\/search-criteria\.ts/,`${name} must import shared Edge criteria`);
   assert.doesNotMatch(source,/(?:>|<=|lte\("price",)\s*185000/, `${name} still contains legacy 185k hard limit`);
 }
+
+assert.match(revalidation,/needsSecurityBackfill:!securityPropertyIds\.has\(row\.property_id\)/);
+assert.match(revalidation,/Number\(b\.needsSecurityBackfill\)-Number\(a\.needsSecurityBackfill\)/);
 
 const app=fs.readFileSync("app.js","utf8");
 const property=fs.readFileSync("property.js","utf8");
